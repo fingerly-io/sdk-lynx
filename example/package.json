@@ -1,0 +1,18 @@
+{
+  "name": "@badele/lynx-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rspeedy build",
+    "dev": "rspeedy dev"
+  },
+  "dependencies": {
+    "@badele/lynx": "workspace:*",
+    "@lynx-js/react": "0.126.1",
+    "@lynx-js/react-rsbuild-plugin": "0.20.2",
+    "@lynx-js/rspeedy": "0.17.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

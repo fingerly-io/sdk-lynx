@@ -1,0 +1,12 @@
+{
+  "platforms": {
+    "android": {
+      "packageName": "io.badele.lynx",
+      "sourceDir": "android"
+    },
+    "ios": {
+      "sourceDir": "ios",
+      "podspecPath": "ios/badele-lynx.podspec"
+    }
+  }
+}

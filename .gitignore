@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.turbo/
+example/node_modules/
+example/dist/
+android/.gradle/
+android/build/
+ios/Pods/
