@@ -4,7 +4,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@LynxNativeModuleRegister("Badele")
+@LynxNativeModule("Badele")
 @interface Badele : NSObject <BadeleSpec>
 
 @end

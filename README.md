@@ -14,8 +14,8 @@ pnpm add @badele/lynx
 
 The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide/autolink):
 
-- Android: apply `org.lynxsdk.lynx.library-settings` in `settings.gradle` and
-  `org.lynxsdk.lynx.library-build` in the app module, then sync and rebuild.
+- Android: apply `org.lynxsdk.library-settings` in `settings.gradle` and
+  `org.lynxsdk.library-build` in the app module, then sync and rebuild.
 - iOS: install `cocoapods-lynx-library`, add
   `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run
   `pod install`, then rebuild.
