@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-  namespace = "io.badele.lynx"
+  namespace = "io.fingerly.lynx"
   compileSdk = 36
 
   defaultConfig {
@@ -21,5 +21,5 @@ dependencies {
   implementation("org.lynxsdk.lynx:lynx:4.1.0")
   implementation("org.lynxsdk.lynx:service-api:4.1.0")
   annotationProcessor("org.lynxsdk.lynx:lynx-processor:4.1.0")
-  implementation("io.badele:badele:0.1.0")
+  implementation("io.fingerly:fingerly:0.1.0")
 }

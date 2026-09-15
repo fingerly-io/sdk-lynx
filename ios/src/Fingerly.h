@@ -1,11 +1,11 @@
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxModule.h>
-#import "BadeleSpec.h"
+#import "FingerlySpec.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@LynxNativeModule("Badele")
-@interface Badele : NSObject <BadeleSpec>
+@LynxNativeModule("Fingerly")
+@interface Fingerly : NSObject <FingerlySpec>
 
 @end
 

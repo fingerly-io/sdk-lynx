@@ -4,7 +4,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol BadeleSpec <LynxModule>
+@protocol FingerlySpec <LynxModule>
 
 - (void)configure:(NSString *)apiKey endpoint:(NSString *)endpoint platform:(NSString *)platform;
 - (void)identify:(nullable NSString *)tag submit:(BOOL)submit success:(id)success failure:(id)failure;

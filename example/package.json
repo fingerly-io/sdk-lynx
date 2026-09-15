@@ -1,5 +1,5 @@
 {
-  "name": "@badele/lynx-example",
+  "name": "@fingerly/lynx-example",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,7 +7,7 @@
     "dev": "rspeedy dev"
   },
   "dependencies": {
-    "@badele/lynx": "workspace:*",
+    "@fingerly/lynx": "workspace:*",
     "@lynx-js/react": "0.126.1",
     "@lynx-js/react-rsbuild-plugin": "0.20.2",
     "@lynx-js/rspeedy": "0.17.2"

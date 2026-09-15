@@ -1,9 +1,9 @@
 {
-  "name": "@badele/lynx",
+  "name": "@fingerly/lynx",
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@9.0.0",
-  "description": "Lynx SDK backed by Badele's native iOS and Android SDKs",
+  "description": "Lynx SDK backed by Fingerly's native iOS and Android SDKs",
   "license": "UNLICENSED",
   "type": "module",
   "main": "./src/index.ts",
@@ -17,7 +17,7 @@
     "example:build": "pnpm --dir example build"
   },
   "dependencies": {
-    "@badele/types": "workspace:*"
+    "@fingerly/types": "workspace:*"
   },
   "devDependencies": {
     "@lynx-js/autolink-codegen": "0.6.0",

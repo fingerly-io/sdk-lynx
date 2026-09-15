@@ -1,12 +1,12 @@
 {
   "platforms": {
     "android": {
-      "packageName": "io.badele.lynx",
+      "packageName": "io.fingerly.lynx",
       "sourceDir": "android"
     },
     "ios": {
       "sourceDir": "ios",
-      "podspecPath": "ios/badele-lynx.podspec"
+      "podspecPath": "ios/fingerly-lynx.podspec"
     }
   }
 }

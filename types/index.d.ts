@@ -1,2 +1,2 @@
-export { Badele } from '../generated/Badele';
+export { Fingerly } from '../generated/Fingerly';
 

@@ -15,7 +15,7 @@ const runtime = globalThis as typeof globalThis & {
   SystemInfo?: { platform: string }
 }
 
-const { BadeleError, load, nativeVersion } = await import('../src/index.js')
+const { FingerlyError, load, nativeVersion } = await import('../src/index.js')
 
 const fullResult = {
   requestId: 'req_123',
@@ -49,7 +49,7 @@ function installNative(result: unknown = fullResult): TestNativeModule {
     collect: vi.fn((success: Success) => success(JSON.stringify(fullResult.report))),
     sdkVersion: vi.fn(() => '0.1.0'),
   }
-  runtime.NativeModules = { Badele: native }
+  runtime.NativeModules = { Fingerly: native }
   return native
 }
 
@@ -156,7 +156,7 @@ describe('collection and failures', () => {
     )
     const client = await load({ apiKey: 'pk_test' })
     await expect(client.identify()).rejects.toMatchObject({
-      name: 'BadeleError',
+      name: 'FingerlyError',
       message: 'organisation disabled',
       status: 402,
     })
@@ -172,8 +172,8 @@ describe('collection and failures', () => {
       await client.collect()
       throw new Error('expected collect to reject')
     } catch (error) {
-      expect(error).toBeInstanceOf(BadeleError)
-      expect((error as InstanceType<typeof BadeleError>).status).toBeUndefined()
+      expect(error).toBeInstanceOf(FingerlyError)
+      expect((error as InstanceType<typeof FingerlyError>).status).toBeUndefined()
     }
   })
 })

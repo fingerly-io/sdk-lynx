@@ -1,20 +1,20 @@
 'background only'
 
-import { requireBadele } from '../generated/Badele'
+import { requireFingerly } from '../generated/Fingerly'
 
 import type {
-  MobileBadeleOptions,
+  MobileFingerlyOptions,
   MobileIdentifyOptions,
   MobileVerdicts,
   NativeIdentifyResult,
   SdkPlatform,
   SignalReport,
   Verdict,
-} from '@badele/types'
+} from '@fingerly/types'
 
 declare const SystemInfo: { platform?: string } | undefined
 
-interface BadeleNativeModule {
+interface FingerlyNativeModule {
   configure(apiKey: string, endpoint: string, platform: string): void
   identify(
     tag: string | null,
@@ -26,11 +26,11 @@ interface BadeleNativeModule {
   sdkVersion(): string
 }
 
-export type BadeleOptions = MobileBadeleOptions
+export type FingerlyOptions = MobileFingerlyOptions
 export type IdentifyOptions = MobileIdentifyOptions
 
-export class BadeleError extends Error {
-  override readonly name = 'BadeleError'
+export class FingerlyError extends Error {
+  override readonly name = 'FingerlyError'
 
   constructor(
     message: string,
@@ -41,22 +41,22 @@ export class BadeleError extends Error {
 }
 
 const MISSING_NATIVE_MODULE =
-  '@badele/lynx could not find its Badele native module. Enable Lynx Native ' +
+  '@fingerly/lynx could not find its Fingerly native module. Enable Lynx Native ' +
   'Library Autolink, run `pod install` for iOS or sync Gradle for Android, ' +
   'then rebuild the native app. This SDK cannot safely collect a partial ' +
   'fingerprint from JavaScript because that could report a compromised device as clean.'
 
-function optionalNativeModule(): BadeleNativeModule | undefined {
+function optionalNativeModule(): FingerlyNativeModule | undefined {
   try {
-    return requireBadele() as BadeleNativeModule
+    return requireFingerly() as FingerlyNativeModule
   } catch {
     return undefined
   }
 }
 
-function nativeModule(): BadeleNativeModule {
+function nativeModule(): FingerlyNativeModule {
   const native = optionalNativeModule()
-  if (!native) throw new BadeleError(MISSING_NATIVE_MODULE)
+  if (!native) throw new FingerlyError(MISSING_NATIVE_MODULE)
   return native
 }
 
@@ -64,20 +64,20 @@ function platformName(): SdkPlatform {
   const platform = typeof SystemInfo === 'undefined' ? undefined : SystemInfo?.platform
   if (platform === 'Android') return 'lynx-android'
   if (platform === 'iOS') return 'lynx-ios'
-  throw new BadeleError(
-    `@badele/lynx supports iOS and Android only; received ${platform ?? 'an unknown platform'}.`,
+  throw new FingerlyError(
+    `@fingerly/lynx supports iOS and Android only; received ${platform ?? 'an unknown platform'}.`,
   )
 }
 
-function parseNativeError(raw: unknown): BadeleError {
-  if (raw instanceof BadeleError) return raw
+function parseNativeError(raw: unknown): FingerlyError {
+  if (raw instanceof FingerlyError) return raw
 
   let value: unknown = raw
   if (typeof raw === 'string') {
     try {
       value = JSON.parse(raw)
     } catch {
-      return new BadeleError(raw)
+      return new FingerlyError(raw)
     }
   }
 
@@ -100,7 +100,7 @@ function parseNativeError(raw: unknown): BadeleError {
         ? value.message
         : String(value)
 
-  return new BadeleError(message, status)
+  return new FingerlyError(message, status)
 }
 
 function invokeNative(
@@ -132,7 +132,7 @@ function normalizeVerdicts(raw: Partial<MobileVerdicts> | undefined): MobileVerd
   }
 }
 
-export class BadeleClient {
+export class FingerlyClient {
   async identify(options: IdentifyOptions = {}): Promise<NativeIdentifyResult> {
     const native = nativeModule()
     const raw = await invokeNative((success, failure) =>
@@ -149,14 +149,14 @@ export class BadeleClient {
   }
 }
 
-export async function load(options: BadeleOptions): Promise<BadeleClient> {
+export async function load(options: FingerlyOptions): Promise<FingerlyClient> {
   const native = nativeModule()
   try {
     native.configure(options.apiKey, options.endpoint ?? '', platformName())
   } catch (error) {
     throw parseNativeError(error)
   }
-  return new BadeleClient()
+  return new FingerlyClient()
 }
 
 export function nativeVersion(): string | undefined {
@@ -182,4 +182,4 @@ export type {
   SignalReport,
   SignalStatus,
   Verdict,
-} from '@badele/types'
+} from '@fingerly/types'

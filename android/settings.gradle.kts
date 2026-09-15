@@ -18,4 +18,4 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "badele-lynx"
+rootProject.name = "fingerly-lynx"

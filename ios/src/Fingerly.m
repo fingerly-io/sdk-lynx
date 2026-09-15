@@ -1,10 +1,10 @@
-#import "Badele.h"
-#import <Badele/Badele-Swift.h>
+#import "Fingerly.h"
+#import <Fingerly/Fingerly-Swift.h>
 
-@implementation Badele
+@implementation Fingerly
 
 + (NSString *)name {
-  return @"Badele";
+  return @"Fingerly";
 }
 
 + (NSDictionary<NSString *, NSString *> *)methodLookup {
@@ -17,7 +17,7 @@
 }
 
 - (void)configure:(NSString *)apiKey endpoint:(NSString *)endpoint platform:(NSString *)platform {
-  [BadeleBridge configureWithApiKey:apiKey endpoint:endpoint platform:platform];
+  [FingerlyBridge configureWithApiKey:apiKey endpoint:endpoint platform:platform];
 }
 
 - (void)identify:(nullable NSString *)tag
@@ -26,7 +26,7 @@
          failure:(id)failure {
   void (^successCallback)(id) = (void (^)(id))success;
   void (^failureCallback)(id) = (void (^)(id))failure;
-  [BadeleBridge identifyWithTag:tag submit:submit completion:^(NSString *json, NSError *error) {
+  [FingerlyBridge identifyWithTag:tag submit:submit completion:^(NSString *json, NSError *error) {
     if (error != nil) {
       failureCallback([self errorJSON:error]);
     } else if (json != nil) {
@@ -40,7 +40,7 @@
 - (void)collect:(id)success failure:(id)failure {
   void (^successCallback)(id) = (void (^)(id))success;
   void (^failureCallback)(id) = (void (^)(id))failure;
-  [BadeleBridge collectWithCompletion:^(NSString *json, NSError *error) {
+  [FingerlyBridge collectWithCompletion:^(NSString *json, NSError *error) {
     if (error != nil) {
       failureCallback([self errorJSON:error]);
     } else if (json != nil) {
@@ -52,7 +52,7 @@
 }
 
 - (NSString *)sdkVersion {
-  return BadeleBridge.sdkVersion;
+  return FingerlyBridge.sdkVersion;
 }
 
 - (NSString *)errorJSON:(NSError *)error {

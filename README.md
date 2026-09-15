@@ -1,6 +1,6 @@
-# @badele/lynx
+# @fingerly/lynx
 
-The Badele SDK for Lynx. It is a thin Native Module over the Badele iOS and
+The Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and
 Android SDKs; all collection, transport and scoring stays native.
 
 Lynx 4.1 and iOS/Android are supported in this first release. HarmonyOS, Web,
@@ -9,7 +9,7 @@ Lynxtron and per-`LynxView` registration are not supported.
 ## Install
 
 ```sh
-pnpm add @badele/lynx
+pnpm add @fingerly/lynx
 ```
 
 The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide/autolink):
@@ -20,17 +20,17 @@ The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide
   `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run
   `pod install`, then rebuild.
 
-The package's `lynx.lib.json` registers the `Badele` Native Module. Native
+The package's `lynx.lib.json` registers the `Fingerly` Native Module. Native
 Modules are available from Lynx background-thread scripting, so call the SDK
 from an event handler, effect, or other background function.
 
 ## Identify
 
 ```ts
-import { load } from '@badele/lynx'
+import { load } from '@fingerly/lynx'
 
-const badele = await load({ apiKey: 'pk_live_…' })
-const result = await badele.identify({ tag: 'checkout' })
+const fingerly = await load({ apiKey: 'pk_live_…' })
+const result = await fingerly.identify({ tag: 'checkout' })
 
 if (result.verdicts.jailbreak.value) {
   // Send result.requestId to your backend and make the decision there.
@@ -43,11 +43,11 @@ correct native risk profile. `identify()` defaults to submission; pass
 signal report without submitting it.
 
 ```ts
-const report = await badele.collect()
+const report = await fingerly.collect()
 const version = nativeVersion()
 ```
 
-Failures are surfaced as `BadeleError`. `status` is populated only for a
+Failures are surfaced as `FingerlyError`. `status` is populated only for a
 positive HTTP status returned by the native transport.
 
 ## Why there is no JavaScript fallback
@@ -60,22 +60,22 @@ Module is an actionable integration error.
 ## Native SDK development dependencies
 
 The native SDKs are not published yet. For Android, publish the sibling
-[Android SDK](https://github.com/badele-io/sdk-android) to Maven Local:
+[Android SDK](https://github.com/fingerly-io/sdk-android) to Maven Local:
 
 ```sh
-./gradlew :badele:publishToMavenLocal
+./gradlew :fingerly:publishToMavenLocal
 ```
 
 For iOS development, point the host Podfile at the sibling
-[iOS SDK](https://github.com/badele-io/sdk-ios) checkout before resolving
-`badele-lynx`.
+[iOS SDK](https://github.com/fingerly-io/sdk-ios) checkout before resolving
+`fingerly-lynx`.
 
 ## Development
 
-Clone recursively so `@badele/types` is available:
+Clone recursively so `@fingerly/types` is available:
 
 ```sh
-git clone --recurse-submodules git@github.com:badele-io/sdk-lynx.git
+git clone --recurse-submodules git@github.com:fingerly-io/sdk-lynx.git
 pnpm install
 pnpm codegen
 pnpm test

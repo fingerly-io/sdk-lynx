@@ -1,4 +1,4 @@
-package io.badele.lynx;
+package io.fingerly.lynx;
 
 import android.content.Context;
 import androidx.annotation.Nullable;
@@ -6,18 +6,18 @@ import com.lynx.jsbridge.LynxMethod;
 import com.lynx.jsbridge.LynxNativeModule;
 import com.lynx.react.bridge.Callback;
 import com.lynx.tasm.behavior.LynxContext;
-import io.badele.lynx.generated.BadeleSpec;
-import io.badele.sdk.bridge.BadeleBridge;
-import io.badele.sdk.bridge.BridgeCallback;
+import io.fingerly.lynx.generated.FingerlySpec;
+import io.fingerly.sdk.bridge.FingerlyBridge;
+import io.fingerly.sdk.bridge.BridgeCallback;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 /** Thin Lynx adapter. Collection, transport and scoring remain in the Android SDK. */
-@LynxNativeModule(name = "Badele")
-public final class Badele extends BadeleSpec {
+@LynxNativeModule(name = "Fingerly")
+public final class Fingerly extends FingerlySpec {
   private final Context applicationContext;
 
-  public Badele(LynxContext context) {
+  public Fingerly(LynxContext context) {
     super(context);
     applicationContext = context.getContext().getApplicationContext();
   }
@@ -25,25 +25,25 @@ public final class Badele extends BadeleSpec {
   @Override
   @LynxMethod
   public void configure(String apiKey, String endpoint, String platform) {
-    BadeleBridge.configure(applicationContext, apiKey, endpoint, platform);
+    FingerlyBridge.configure(applicationContext, apiKey, endpoint, platform);
   }
 
   @Override
   @LynxMethod
   public void identify(@Nullable String tag, boolean submit, Object success, Object failure) {
-    BadeleBridge.identify(tag, submit, settle(success, failure));
+    FingerlyBridge.identify(tag, submit, settle(success, failure));
   }
 
   @Override
   @LynxMethod
   public void collect(Object success, Object failure) {
-    BadeleBridge.collect(settle(success, failure));
+    FingerlyBridge.collect(settle(success, failure));
   }
 
   @Override
   @LynxMethod
   public String sdkVersion() {
-    return BadeleBridge.sdkVersion();
+    return FingerlyBridge.sdkVersion();
   }
 
   private static BridgeCallback settle(Object success, Object failure) {
