@@ -29,7 +29,7 @@ from an event handler, effect, or other background function.
 ```ts
 import { load } from '@fingerly/lynx'
 
-const fingerly = await load({ apiKey: 'pk_live_…' })
+const fingerly = await load({ apiKey: 'fly_pk_us_production_…' })
 const result = await fingerly.identify({ tag: 'checkout' })
 
 if (result.verdicts.jailbreak.value) {
@@ -49,6 +49,54 @@ const version = nativeVersion()
 
 Failures are surfaced as `FingerlyError`. `status` is populated only for a
 positive HTTP status returned by the native transport.
+
+## Consent
+
+If your legal basis for identifying users is consent (ePrivacy, GDPR), load the
+SDK with `consent: 'pending'` and pass on the answer from your consent tool when
+it arrives:
+
+```ts
+import { ConsentError, load } from '@fingerly/lynx'
+
+const fingerly = await load({ apiKey: 'fly_pk_us_production_…', consent: 'pending' })
+
+// From your consent tool's callback:
+fingerly.setConsent(accepted ? 'granted' : 'denied')
+
+fingerly.consent // 'granted', 'pending' or 'denied'
+```
+
+| Option / method | What it does |
+| --- | --- |
+| `consent` option on `load` | The starting state: `'granted'` (the default), `'pending'` or `'denied'`. |
+| `setConsent(state)` | Records the decision. Synchronous and safe to call repeatedly. |
+| `consent` | The state last given to the native SDK, read-only. |
+
+The default is `'granted'`, so an integration that never mentions consent
+behaves exactly as before. Anything other than the three states throws a
+`TypeError`.
+
+Until consent is `'granted'`, the native SDK runs no source, touches no storage
+for fingerprinting and sends nothing. `identify()` and `collect()` reject with
+`ConsentError`, a subclass of `FingerlyError` with `code: 'consent_required'`
+and the refusing `state`:
+
+```ts
+try {
+  await fingerly.identify()
+} catch (error) {
+  if (error instanceof ConsentError) {
+    // error.state is 'pending' or 'denied'; nothing was collected or sent
+  }
+}
+```
+
+Withdrawing consent also stops a call already in flight before its next source
+starts and before it submits, and that call rejects with `ConsentError`.
+Loading collects and sends nothing, whatever the state. The native SDK holds one
+state for the whole app, and each `load` sets it to the `consent` passed (or
+`'granted'`), so pass `consent` on every `load`.
 
 ## Why there is no JavaScript fallback
 

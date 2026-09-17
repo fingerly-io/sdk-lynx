@@ -9,15 +9,25 @@
 
 + (NSDictionary<NSString *, NSString *> *)methodLookup {
   return @{
-    @"configure" : NSStringFromSelector(@selector(configure:endpoint:platform:)),
+    @"configure" : NSStringFromSelector(@selector(configure:endpoint:platform:consent:)),
+    @"setConsent" : NSStringFromSelector(@selector(setConsent:)),
     @"identify" : NSStringFromSelector(@selector(identify:submit:success:failure:)),
     @"collect" : NSStringFromSelector(@selector(collect:failure:)),
     @"sdkVersion" : NSStringFromSelector(@selector(sdkVersion)),
   };
 }
 
-- (void)configure:(NSString *)apiKey endpoint:(NSString *)endpoint platform:(NSString *)platform {
-  [FingerlyBridge configureWithApiKey:apiKey endpoint:endpoint platform:platform];
+- (void)configure:(NSString *)apiKey
+         endpoint:(NSString *)endpoint
+         platform:(NSString *)platform
+          consent:(NSString *)consent {
+  // `src/index.ts` always sends a consent, `granted` when the app passed none.
+  // The native bridge reads anything it does not recognise as `pending`.
+  [FingerlyBridge configureWithApiKey:apiKey endpoint:endpoint platform:platform consent:consent];
+}
+
+- (void)setConsent:(NSString *)state {
+  [FingerlyBridge setConsent:state];
 }
 
 - (void)identify:(nullable NSString *)tag
@@ -56,10 +66,20 @@
 }
 
 - (NSString *)errorJSON:(NSError *)error {
-  NSDictionary *payload = @{
-    @"code" : [NSString stringWithFormat:@"%ld", (long)error.code],
+  // A refusal for want of consent carries its string code (`consent_required`)
+  // and the refusing state in `userInfo`; every other failure uses the numeric
+  // code, which is the HTTP status where there was one.
+  id userInfoCode = error.userInfo[@"code"];
+  id userInfoState = error.userInfo[@"state"];
+  NSMutableDictionary *payload = [@{
+    @"code" : [userInfoCode isKindOfClass:[NSString class]]
+      ? userInfoCode
+      : [NSString stringWithFormat:@"%ld", (long)error.code],
     @"message" : error.localizedDescription ?: @"Native SDK failure",
-  };
+  } mutableCopy];
+  if ([userInfoState isKindOfClass:[NSString class]]) {
+    payload[@"state"] = userInfoState;
+  }
   NSData *data = [NSJSONSerialization dataWithJSONObject:payload options:0 error:nil];
   return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]
     ?: @"{\"code\":\"-1\",\"message\":\"Native SDK failure\"}";

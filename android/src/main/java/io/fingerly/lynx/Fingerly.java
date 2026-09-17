@@ -24,8 +24,16 @@ public final class Fingerly extends FingerlySpec {
 
   @Override
   @LynxMethod
-  public void configure(String apiKey, String endpoint, String platform) {
-    FingerlyBridge.configure(applicationContext, apiKey, endpoint, platform);
+  public void configure(String apiKey, String endpoint, String platform, String consent) {
+    // `src/index.ts` always sends a consent, `granted` when the app passed none,
+    // so the state is set rather than left as it was.
+    FingerlyBridge.configure(applicationContext, apiKey, endpoint, platform, consent);
+  }
+
+  @Override
+  @LynxMethod
+  public void setConsent(String state) {
+    FingerlyBridge.setConsent(state);
   }
 
   @Override

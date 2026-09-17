@@ -12,7 +12,10 @@ public abstract class FingerlySpec extends LynxContextModule {
   }
 
   @LynxMethod
-  public abstract void configure(String apiKey, String endpoint, String platform);
+  public abstract void configure(String apiKey, String endpoint, String platform, String consent);
+
+  @LynxMethod
+  public abstract void setConsent(String state);
 
   @LynxMethod
   public abstract void identify(@Nullable String tag, boolean submit, Object success, Object failure);

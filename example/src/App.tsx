@@ -8,7 +8,7 @@ export function App() {
 
   const identify = async () => {
     try {
-      const fingerly = await load({ apiKey: 'pk_test_replace_me' })
+      const fingerly = await load({ apiKey: 'fly_pk_us_development_replace_me' })
       const result = await fingerly.identify({ tag: 'lynx-example' })
       setOutput(`${result.requestId} · score ${result.suspectScore ?? 'unscored'}`)
     } catch (error) {
@@ -18,7 +18,7 @@ export function App() {
 
   const collect = async () => {
     try {
-      const fingerly = await load({ apiKey: 'pk_test_replace_me' })
+      const fingerly = await load({ apiKey: 'fly_pk_us_development_replace_me' })
       const report = await fingerly.collect()
       setOutput(`${Object.keys(report.sources).length} sources · native ${nativeVersion() ?? '?'}`)
     } catch (error) {
