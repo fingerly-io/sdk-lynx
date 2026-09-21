@@ -29,7 +29,7 @@ from an event handler, effect, or other background function.
 ```ts
 import { load } from '@fingerly/lynx'
 
-const fingerly = await load({ apiKey: 'fly_pk_us_production_…' })
+const fingerly = await load({ apiKey: 'fly_pk_production_…' })
 const result = await fingerly.identify({ tag: 'checkout' })
 
 if (result.verdicts.jailbreak.value) {
@@ -59,7 +59,7 @@ it arrives:
 ```ts
 import { ConsentError, load } from '@fingerly/lynx'
 
-const fingerly = await load({ apiKey: 'fly_pk_us_production_…', consent: 'pending' })
+const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: 'pending' })
 
 // From your consent tool's callback:
 fingerly.setConsent(accepted ? 'granted' : 'denied')
