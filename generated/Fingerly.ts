@@ -7,6 +7,7 @@ export interface FingerlySpec {
   setConsent(state: string): void;
   identify(tag: string | null, submit: boolean, success: (json: string) => void, failure: (error: string) => void): void;
   collect(success: (json: string) => void, failure: (error: string) => void): void;
+  deleteStoredIdentity(success: () => void, failure: (error: string) => void): void;
   sdkVersion(): string;
 }
 

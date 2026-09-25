@@ -10,6 +10,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setConsent:(NSString *)state;
 - (void)identify:(nullable NSString *)tag submit:(BOOL)submit success:(id)success failure:(id)failure;
 - (void)collect:(id)success failure:(id)failure;
+- (void)deleteStoredIdentity:(id)success failure:(id)failure;
 - (NSString *)sdkVersion;
 
 @end

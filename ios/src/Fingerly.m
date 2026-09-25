@@ -13,6 +13,7 @@
     @"setConsent" : NSStringFromSelector(@selector(setConsent:)),
     @"identify" : NSStringFromSelector(@selector(identify:submit:success:failure:)),
     @"collect" : NSStringFromSelector(@selector(collect:failure:)),
+    @"deleteStoredIdentity" : NSStringFromSelector(@selector(deleteStoredIdentity:failure:)),
     @"sdkVersion" : NSStringFromSelector(@selector(sdkVersion)),
   };
 }
@@ -59,6 +60,19 @@
       failureCallback(@"{\"code\":\"-1\",\"message\":\"The SDK produced no report\"}");
     }
   }];
+}
+
+- (void)deleteStoredIdentity:(id)success failure:(id)failure {
+  // A keychain delete, synchronous and quick. A refusal carries the
+  // `delete_failed` code in `userInfo`, which `errorJSON:` passes on.
+  void (^successCallback)(void) = (void (^)(void))success;
+  void (^failureCallback)(id) = (void (^)(id))failure;
+  NSError *error = [FingerlyBridge deleteStoredIdentity];
+  if (error != nil) {
+    failureCallback([self errorJSON:error]);
+  } else {
+    successCallback();
+  }
 }
 
 - (NSString *)sdkVersion {

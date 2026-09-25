@@ -24,5 +24,8 @@ public abstract class FingerlySpec extends LynxContextModule {
   public abstract void collect(Object success, Object failure);
 
   @LynxMethod
+  public abstract void deleteStoredIdentity(Object success, Object failure);
+
+  @LynxMethod
   public abstract String sdkVersion();
 }

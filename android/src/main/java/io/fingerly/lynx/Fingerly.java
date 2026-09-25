@@ -48,6 +48,28 @@ public final class Fingerly extends FingerlySpec {
     FingerlyBridge.collect(settle(success, failure));
   }
 
+  /**
+   * Deletes the install record, for a user's erasure or account deletion. Needs
+   * neither `configure` nor consent. A failure is `delete_failed`, the code the
+   * iOS adapter uses for the same thing.
+   */
+  @Override
+  @LynxMethod
+  public void deleteStoredIdentity(Object success, Object failure) {
+    boolean deleted;
+    try {
+      deleted = FingerlyBridge.deleteStoredIdentity(applicationContext);
+    } catch (RuntimeException error) {
+      deleted = false;
+    }
+    if (deleted) {
+      ((Callback) success).invoke();
+    } else {
+      ((Callback) failure).invoke(
+          errorJson("delete_failed", "Fingerly could not delete its stored install record"));
+    }
+  }
+
   @Override
   @LynxMethod
   public String sdkVersion() {

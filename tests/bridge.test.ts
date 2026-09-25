@@ -16,7 +16,9 @@ const runtime = globalThis as typeof globalThis & {
   SystemInfo?: { platform: string }
 }
 
-const { ConsentError, FingerlyError, load, nativeVersion } = await import('../src/index.js')
+const { ConsentError, FingerlyError, deleteStoredIdentity, load, nativeVersion } = await import(
+  '../src/index.js'
+)
 
 const fullResult = {
   requestId: 'req_123',
@@ -302,5 +304,48 @@ describe('collection and failures', () => {
       expect(error).toBeInstanceOf(FingerlyError)
       expect((error as InstanceType<typeof FingerlyError>).status).toBeUndefined()
     }
+  })
+})
+
+describe('deleteStoredIdentity', () => {
+  it('asks the native SDK, without load or consent', async () => {
+    const native = installNative()
+    const remove = vi.fn((success: () => void) => success())
+    ;(native as unknown as Record<string, unknown>).deleteStoredIdentity = remove
+
+    await expect(deleteStoredIdentity()).resolves.toBeUndefined()
+    expect(remove).toHaveBeenCalledTimes(1)
+    expect(native.configure).not.toHaveBeenCalled()
+    expect(native.setConsent).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a failed delete as a FingerlyError, as both adapters report it', async () => {
+    const native = installNative()
+    ;(native as unknown as Record<string, unknown>).deleteStoredIdentity = vi.fn(
+      (_success: () => void, failure: Failure) =>
+        failure(
+          JSON.stringify({
+            code: 'delete_failed',
+            message: 'Fingerly could not delete its stored install record',
+          }),
+        ),
+    )
+
+    const error = await deleteStoredIdentity().catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(FingerlyError)
+    expect((error as InstanceType<typeof FingerlyError>).message).toBe(
+      'Fingerly could not delete its stored install record',
+    )
+    expect((error as InstanceType<typeof FingerlyError>).status).toBeUndefined()
+  })
+
+  it('says so when the native SDK in the app predates it', async () => {
+    installNative()
+
+    await expect(deleteStoredIdentity()).rejects.toThrow(/deleteStoredIdentity is not available/)
+  })
+
+  it('reports the missing native module', async () => {
+    await expect(deleteStoredIdentity()).rejects.toThrow(/could not find its Fingerly native module/)
   })
 })
