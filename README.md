@@ -29,7 +29,8 @@ from an event handler, effect, or other background function.
 ```ts
 import { load } from '@fingerly/lynx'
 
-const fingerly = await load({ apiKey: 'fly_pk_production_…' })
+// consent: only once you have consent (or another lawful basis)
+const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: 'granted' })
 const result = await fingerly.identify({ tag: 'checkout' })
 
 if (result.verdicts.jailbreak.value) {
@@ -52,14 +53,14 @@ positive HTTP status returned by the native transport.
 
 ## Consent
 
-If your legal basis for identifying users is consent (ePrivacy, GDPR), load the
-SDK with `consent: 'pending'` and pass on the answer from your consent tool when
-it arrives:
+The SDK identifies nobody until it is told consent is `'granted'`. The usual
+pattern is to load it at launch with the default `'pending'` and pass on the
+answer from your consent tool when it arrives:
 
 ```ts
 import { ConsentError, load } from '@fingerly/lynx'
 
-const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: 'pending' })
+const fingerly = await load({ apiKey: 'fly_pk_production_…' }) // consent is 'pending'
 
 // From your consent tool's callback:
 fingerly.setConsent(accepted ? 'granted' : 'denied')
@@ -69,13 +70,14 @@ fingerly.consent // 'granted', 'pending' or 'denied'
 
 | Option / method | What it does |
 | --- | --- |
-| `consent` option on `load` | The starting state: `'granted'` (the default), `'pending'` or `'denied'`. |
+| `consent` option on `load` | The starting state: `'pending'` (the default), `'granted'` or `'denied'`. |
 | `setConsent(state)` | Records the decision. Synchronous and safe to call repeatedly. |
 | `consent` | The state last given to the native SDK, read-only. |
 
-The default is `'granted'`, so an integration that never mentions consent
-behaves exactly as before. Anything other than the three states throws a
-`TypeError`.
+The default is `'pending'`, so an integration that never mentions consent
+identifies nobody. Pass `consent: 'granted'` to `load` only when you already
+have consent, or another lawful basis. Anything other than the three states
+throws a `TypeError`.
 
 Until consent is `'granted'`, the native SDK runs no source, touches no storage
 for fingerprinting and sends nothing. `identify()` and `collect()` reject with
@@ -96,7 +98,12 @@ Withdrawing consent also stops a call already in flight before its next source
 starts and before it submits, and that call rejects with `ConsentError`.
 Loading collects and sends nothing, whatever the state. The native SDK holds one
 state for the whole app, and each `load` sets it to the `consent` passed (or
-`'granted'`), so pass `consent` on every `load`.
+`'pending'`), so pass `consent` on every `load`.
+
+Every submission the native SDK sends carries the state it was collected under,
+`"consent": "granted"`, and the server refuses any other value with
+`422 consent_required`. The native SDK only sends while consent is granted, so
+that refusal should never be seen.
 
 ## Why there is no JavaScript fallback
 

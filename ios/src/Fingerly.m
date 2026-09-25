@@ -21,7 +21,7 @@
          endpoint:(NSString *)endpoint
          platform:(NSString *)platform
           consent:(NSString *)consent {
-  // `src/index.ts` always sends a consent, `granted` when the app passed none.
+  // `src/index.ts` always sends a consent, `pending` when the app passed none.
   // The native bridge reads anything it does not recognise as `pending`.
   [FingerlyBridge configureWithApiKey:apiKey endpoint:endpoint platform:platform consent:consent];
 }

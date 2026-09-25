@@ -36,10 +36,11 @@ export type ConsentState = 'granted' | 'pending' | 'denied'
 
 export interface FingerlyOptions extends MobileFingerlyOptions {
   /**
-   * The consent to start from, `granted` when omitted. Pass `pending` when your
-   * legal basis is consent, then call `setConsent` once your consent tool has an
-   * answer. Until consent is `granted`, `identify()` and `collect()` reject with
-   * a `ConsentError` and the native SDK runs no source and sends nothing.
+   * The consent to start from, `pending` when omitted. Call `setConsent` once
+   * your consent tool has an answer. Until consent is `granted`, `identify()`
+   * and `collect()` reject with a `ConsentError` and the native SDK runs no
+   * source and sends nothing. Pass `granted` only once the user has agreed, or
+   * where another lawful basis applies.
    */
   consent?: ConsentState
 }
@@ -109,7 +110,7 @@ function refusedConsent(record: Record<string, unknown> | undefined, message: st
  * The consent last handed to the native SDK. Module state because the native
  * bridge keeps one client per process, shared by every `FingerlyClient` here.
  */
-let currentConsent: ConsentState = 'granted'
+let currentConsent: ConsentState = 'pending'
 
 const MISSING_NATIVE_MODULE =
   '@fingerly/lynx could not find its Fingerly native module. Enable Lynx Native ' +
@@ -249,10 +250,10 @@ export class FingerlyClient {
 
 /**
  * Loading collects and sends nothing, whatever the consent. The consent passed
- * here, or `granted` when there is none, replaces what the native SDK held.
+ * here, or `pending` when there is none, replaces what the native SDK held.
  */
 export async function load(options: FingerlyOptions): Promise<FingerlyClient> {
-  const consent = options.consent ?? 'granted'
+  const consent = options.consent ?? 'pending'
   assertConsentState(consent)
 
   const native = nativeModule()

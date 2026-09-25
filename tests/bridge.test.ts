@@ -62,7 +62,7 @@ function installNative(result: unknown = fullResult): TestNativeModule {
  * sends only a code and a message.
  */
 function installGatedNative(shape: 'ios' | 'android' = 'ios'): TestNativeModule {
-  let consent = 'granted'
+  let consent = 'pending'
   const refusal = () =>
     JSON.stringify({
       code: 'consent_required',
@@ -100,14 +100,14 @@ describe('platform contract', () => {
   it('reports the iOS host', async () => {
     const native = installNative()
     await load({ apiKey: 'fly_pk_development_test' })
-    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-ios', 'granted')
+    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-ios', 'pending')
   })
 
   it('reports the Android host and forwards a custom endpoint', async () => {
     runtime.SystemInfo = { platform: 'Android' }
     const native = installNative()
     await load({ apiKey: 'fly_pk_development_test', endpoint: 'https://edge.example' })
-    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', 'https://edge.example', 'lynx-android', 'granted')
+    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', 'https://edge.example', 'lynx-android', 'pending')
   })
 
   it.each(['Harmony', 'windows', 'macOS', 'web'])('rejects unsupported %s hosts', async (platform) => {
@@ -140,21 +140,21 @@ describe('native module lifecycle', () => {
 describe('identify', () => {
   it('uses a null tag and submits by default', async () => {
     const native = installNative()
-    const client = await load({ apiKey: 'fly_pk_development_test' })
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
     await client.identify()
     expect(native.identify.mock.calls[0]?.slice(0, 2)).toEqual([null, true])
   })
 
   it('forwards a tag and submit false', async () => {
     const native = installNative()
-    const client = await load({ apiKey: 'fly_pk_development_test' })
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
     await client.identify({ tag: 'checkout', submit: false })
     expect(native.identify.mock.calls[0]?.slice(0, 2)).toEqual(['checkout', false])
   })
 
   it('preserves the complete native/server result', async () => {
     installNative()
-    const result = await (await load({ apiKey: 'fly_pk_development_test' })).identify()
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.requestId).toBe('req_123')
     expect(result.visitorId).toBe('vis_123')
     expect(result.suspectScore).toBe(42)
@@ -164,14 +164,14 @@ describe('identify', () => {
 
   it('keeps an unscored result null', async () => {
     installNative({ ...fullResult, suspectScore: null, suspectLevel: null })
-    const result = await (await load({ apiKey: 'fly_pk_development_test' })).identify({ submit: false })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify({ submit: false })
     expect(result.suspectScore).toBeNull()
     expect(result.suspectLevel).toBeNull()
   })
 
   it('fills verdicts unavailable on the current native platform', async () => {
     installNative()
-    const result = await (await load({ apiKey: 'fly_pk_development_test' })).identify()
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.verdicts.jailbreak.value).toBe(true)
     expect(result.verdicts.root).toEqual({ value: false, confidence: 'low', reasons: [] })
     expect(result.verdicts.emulator.reasons).toEqual([])
@@ -179,15 +179,20 @@ describe('identify', () => {
 })
 
 describe('consent', () => {
-  it('defaults to granted and leaves identification unchanged', async () => {
-    const native = installNative()
+  it('defaults to pending, so nothing is identified until consent is granted', async () => {
+    const native = installGatedNative('ios')
     const client = await load({ apiKey: 'fly_pk_development_test' })
-    expect(native.configure.mock.calls[0]?.[3]).toBe('granted')
-    expect(client.consent).toBe('granted')
-    await expect(client.identify()).resolves.toMatchObject({ requestId: 'req_123' })
+    expect(native.configure.mock.calls[0]?.[3]).toBe('pending')
+    expect(client.consent).toBe('pending')
+    await expect(client.identify()).rejects.toMatchObject({
+      name: 'ConsentError',
+      code: 'consent_required',
+      state: 'pending',
+    })
+    await expect(client.collect()).rejects.toBeInstanceOf(ConsentError)
   })
 
-  it.each(['pending', 'denied'] as const)('passes %s through to the native configure', async (consent) => {
+  it.each(['granted', 'pending', 'denied'] as const)('passes %s through to the native configure', async (consent) => {
     const native = installNative()
     const client = await load({ apiKey: 'fly_pk_development_test', consent })
     expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-ios', consent)
@@ -265,7 +270,7 @@ describe('consent', () => {
 describe('collection and failures', () => {
   it('parses the report returned by collect', async () => {
     installNative()
-    const report = await (await load({ apiKey: 'fly_pk_development_test' })).collect()
+    const report = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).collect()
     expect(report.schema).toBe(1)
   })
 
@@ -276,7 +281,7 @@ describe('collection and failures', () => {
         failure(JSON.stringify({ code: '402', message: 'organisation disabled' }))
       },
     )
-    const client = await load({ apiKey: 'fly_pk_development_test' })
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
     await expect(client.identify()).rejects.toMatchObject({
       name: 'FingerlyError',
       message: 'organisation disabled',
@@ -289,7 +294,7 @@ describe('collection and failures', () => {
     native.collect.mockImplementation((_success: Success, failure: Failure) => {
       failure(JSON.stringify({ code: '-1', message: 'no report' }))
     })
-    const client = await load({ apiKey: 'fly_pk_development_test' })
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
     try {
       await client.collect()
       throw new Error('expected collect to reject')
