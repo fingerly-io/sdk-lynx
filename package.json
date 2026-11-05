@@ -12,8 +12,9 @@
   "files": ["android", "generated", "ios", "src", "types", "lynx.lib.json", "README.md"],
   "scripts": {
     "codegen": "lynx-autolink-codegen",
-    "build": "pnpm codegen && tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "build:types": "pnpm --filter @fingerly/types build",
+    "build": "pnpm codegen && pnpm build:types && tsc --noEmit",
+    "lint": "pnpm build:types && tsc --noEmit",
     "test": "vitest run",
     "example:build": "pnpm --dir example build"
   },
