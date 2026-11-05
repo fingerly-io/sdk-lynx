@@ -11,7 +11,7 @@
   return @{
     @"configure" : NSStringFromSelector(@selector(configure:endpoint:platform:consent:)),
     @"setConsent" : NSStringFromSelector(@selector(setConsent:)),
-    @"identify" : NSStringFromSelector(@selector(identify:submit:success:failure:)),
+    @"identify" : NSStringFromSelector(@selector(identify:submit:automatic:success:failure:)),
     @"collect" : NSStringFromSelector(@selector(collect:failure:)),
     @"deleteStoredIdentity" : NSStringFromSelector(@selector(deleteStoredIdentity:failure:)),
     @"sdkVersion" : NSStringFromSelector(@selector(sdkVersion)),
@@ -33,11 +33,17 @@
 
 - (void)identify:(nullable NSString *)tag
           submit:(BOOL)submit
+       automatic:(BOOL)automatic
          success:(id)success
          failure:(id)failure {
   void (^successCallback)(id) = (void (^)(id))success;
   void (^failureCallback)(id) = (void (^)(id))failure;
-  [FingerlyBridge identifyWithTag:tag submit:submit completion:^(NSString *json, NSError *error) {
+  // `automatic` marks a call the app made on its own, which joins the
+  // identification already in flight instead of starting another.
+  [FingerlyBridge identifyWithTag:tag
+                           submit:submit
+                        automatic:automatic
+                       completion:^(NSString *json, NSError *error) {
     if (error != nil) {
       failureCallback([self errorJSON:error]);
     } else if (json != nil) {

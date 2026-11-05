@@ -20,6 +20,7 @@ interface FingerlyNativeModule {
   identify(
     tag: string | null,
     submit: boolean,
+    automatic: boolean,
     success: (json: string) => void,
     failure: (error: string) => void,
   ): void
@@ -47,7 +48,17 @@ export interface FingerlyOptions extends MobileFingerlyOptions {
   consent?: ConsentState
 }
 
-export type IdentifyOptions = MobileIdentifyOptions
+export interface IdentifyOptions extends MobileIdentifyOptions {
+  /**
+   * True for a call the app makes on its own rather than in answer to the
+   * user: on start, on a timer, on returning to the foreground. It joins an
+   * identification already in flight instead of starting another, and waits
+   * out a transient failure instead of repeating it at once. False when
+   * omitted. On Android it has no effect until the native Android SDK
+   * supports it.
+   */
+  automatic?: boolean
+}
 
 export class FingerlyError extends Error {
   // Widened to `string` so a subclass can name itself.
@@ -267,7 +278,13 @@ export class FingerlyClient {
   async identify(options: IdentifyOptions = {}): Promise<NativeIdentifyResult> {
     const native = nativeModule()
     const raw = await invokeNative((success, failure) =>
-      native.identify(options.tag ?? null, options.submit !== false, success, failure),
+      native.identify(
+        options.tag ?? null,
+        options.submit !== false,
+        options.automatic === true,
+        success,
+        failure,
+      ),
     )
     const parsed = parseNative(raw) as unknown as NativeIdentifyResult
     return { ...parsed, verdicts: normalizeVerdicts(parsed.verdicts) }

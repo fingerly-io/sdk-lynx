@@ -47,7 +47,7 @@ function installNative(result: unknown = fullResult): TestNativeModule {
   const native = {
     configure: vi.fn(),
     setConsent: vi.fn(),
-    identify: vi.fn((_tag: string | null, _submit: boolean, success: Success) => {
+    identify: vi.fn((_tag: string | null, _submit: boolean, _automatic: boolean, success: Success) => {
       success(JSON.stringify(result))
     }),
     collect: vi.fn((success: Success) => success(JSON.stringify(fullResult.report))),
@@ -79,7 +79,7 @@ function installGatedNative(shape: 'ios' | 'android' = 'ios'): TestNativeModule 
     setConsent: vi.fn((state: string) => {
       consent = state
     }),
-    identify: vi.fn((_tag: string | null, _submit: boolean, success: Success, failure: Failure) => {
+    identify: vi.fn((_tag: string | null, _submit: boolean, _automatic: boolean, success: Success, failure: Failure) => {
       if (consent !== 'granted') failure(refusal())
       else success(JSON.stringify(fullResult))
     }),
@@ -144,14 +144,21 @@ describe('identify', () => {
     const native = installNative()
     const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
     await client.identify()
-    expect(native.identify.mock.calls[0]?.slice(0, 2)).toEqual([null, true])
+    expect(native.identify.mock.calls[0]?.slice(0, 3)).toEqual([null, true, false])
   })
 
   it('forwards a tag and submit false', async () => {
     const native = installNative()
     const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
     await client.identify({ tag: 'checkout', submit: false })
-    expect(native.identify.mock.calls[0]?.slice(0, 2)).toEqual(['checkout', false])
+    expect(native.identify.mock.calls[0]?.slice(0, 3)).toEqual(['checkout', false, false])
+  })
+
+  it('forwards automatic when asked for', async () => {
+    const native = installNative()
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    await client.identify({ tag: 'timer', automatic: true })
+    expect(native.identify.mock.calls[0]?.slice(0, 3)).toEqual(['timer', true, true])
   })
 
   it('preserves the complete native/server result', async () => {
@@ -279,7 +286,7 @@ describe('collection and failures', () => {
   it('preserves positive HTTP status codes', async () => {
     const native = installNative()
     native.identify.mockImplementation(
-      (_tag: string | null, _submit: boolean, _success: Success, failure: Failure) => {
+      (_tag: string | null, _submit: boolean, _automatic: boolean, _success: Success, failure: Failure) => {
         failure(JSON.stringify({ code: '402', message: 'organisation disabled' }))
       },
     )
@@ -294,7 +301,7 @@ describe('collection and failures', () => {
   it('carries the iOS adapter retryAfterMs on the error', async () => {
     const native = installNative()
     native.identify.mockImplementation(
-      (_tag: string | null, _submit: boolean, _success: Success, failure: Failure) => {
+      (_tag: string | null, _submit: boolean, _automatic: boolean, _success: Success, failure: Failure) => {
         failure(JSON.stringify({ code: '429', message: 'Too many requests', retryAfterMs: 3000 }))
       },
     )
@@ -306,7 +313,7 @@ describe('collection and failures', () => {
     for (const extra of [{}, { retryAfterMs: '3' }, { retryAfterMs: -1 }]) {
       const native = installNative()
       native.identify.mockImplementation(
-        (_tag: string | null, _submit: boolean, _success: Success, failure: Failure) => {
+        (_tag: string | null, _submit: boolean, _automatic: boolean, _success: Success, failure: Failure) => {
           failure(JSON.stringify({ code: '503', message: 'unavailable', ...extra }))
         },
       )
@@ -337,7 +344,7 @@ describe('unreadable native answers', () => {
   it('rejects with a FingerlyError rather than a SyntaxError or TypeError', async () => {
     for (const raw of ['not json', 'null', '[1, 2]', '"text"']) {
       const native = installNative()
-      native.identify.mockImplementation((_tag: string | null, _submit: boolean, success: Success) => {
+      native.identify.mockImplementation((_tag: string | null, _submit: boolean, _automatic: boolean, success: Success) => {
         success(raw)
       })
       native.collect.mockImplementation((success: Success) => success(raw))

@@ -38,7 +38,10 @@ public final class Fingerly extends FingerlySpec {
 
   @Override
   @LynxMethod
-  public void identify(@Nullable String tag, boolean submit, Object success, Object failure) {
+  public void identify(
+      @Nullable String tag, boolean submit, boolean automatic, Object success, Object failure) {
+    // `automatic` is not read: the native Android bridge has no such option
+    // yet, so every call is identified as a user's call.
     FingerlyBridge.identify(tag, submit, settle(success, failure));
   }
 

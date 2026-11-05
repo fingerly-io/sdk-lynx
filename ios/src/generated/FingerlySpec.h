@@ -8,7 +8,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)configure:(NSString *)apiKey endpoint:(NSString *)endpoint platform:(NSString *)platform consent:(NSString *)consent;
 - (void)setConsent:(NSString *)state;
-- (void)identify:(nullable NSString *)tag submit:(BOOL)submit success:(id)success failure:(id)failure;
+- (void)identify:(nullable NSString *)tag submit:(BOOL)submit automatic:(BOOL)automatic success:(id)success failure:(id)failure;
 - (void)collect:(id)success failure:(id)failure;
 - (void)deleteStoredIdentity:(id)success failure:(id)failure;
 - (NSString *)sdkVersion;

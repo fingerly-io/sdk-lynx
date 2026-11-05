@@ -40,8 +40,12 @@ if (result.verdicts.jailbreak.value) {
 
 `load` reports `lynx-ios` or `lynx-android`, allowing the server to select the
 correct native risk profile. `identify()` defaults to submission; pass
-`{ submit: false }` to collect and score locally. `collect()` returns the native
-signal report without submitting it.
+`{ submit: false }` to collect and score locally. Pass `{ automatic: true }` for
+a call your app makes on its own (on start, on a timer, on returning to the
+foreground): it joins an identification already in flight instead of starting
+another, and waits out a transient failure instead of repeating it. On Android
+it has no effect until the native Android SDK supports it. `collect()` returns
+the native signal report without submitting it.
 
 ```ts
 const report = await fingerly.collect()
