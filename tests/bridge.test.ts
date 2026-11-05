@@ -307,6 +307,28 @@ describe('collection and failures', () => {
   })
 })
 
+describe('unreadable native answers', () => {
+  it('rejects with a FingerlyError rather than a SyntaxError or TypeError', async () => {
+    for (const raw of ['not json', 'null', '[1, 2]', '"text"']) {
+      const native = installNative()
+      native.identify.mockImplementation((_tag: string | null, _submit: boolean, success: Success) => {
+        success(raw)
+      })
+      native.collect.mockImplementation((success: Success) => success(raw))
+      const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+      await expect(client.identify(), raw).rejects.toBeInstanceOf(FingerlyError)
+      await expect(client.collect(), raw).rejects.toBeInstanceOf(FingerlyError)
+    }
+  })
+
+  it('tolerates a result without reason and with members it does not know', async () => {
+    installNative({ requestId: 'req_1', verdicts: {}, report: { schema: 1, sources: {} }, somethingNew: { a: 1 } })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+    expect(result.requestId).toBe('req_1')
+    expect(result.reason).toBeUndefined()
+  })
+})
+
 describe('deleteStoredIdentity', () => {
   it('asks the native SDK, without load or consent', async () => {
     const native = installNative()

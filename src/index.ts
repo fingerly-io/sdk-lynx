@@ -192,6 +192,26 @@ function invokeNative(
   })
 }
 
+/**
+ * The native JSON as an object, or a `FingerlyError`.
+ *
+ * A `SyntaxError`, or a `TypeError` from spreading `null`, would escape a
+ * handler that checks `instanceof FingerlyError`, which is the one every
+ * caller writes.
+ */
+function parseNative(raw: string): Record<string, unknown> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new FingerlyError('The SDK produced an unreadable report')
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new FingerlyError('The SDK produced an unreadable report')
+  }
+  return parsed as Record<string, unknown>
+}
+
 const UNKNOWN_VERDICT: Verdict = { value: false, confidence: 'low', reasons: [] }
 
 function normalizeVerdicts(raw: Partial<MobileVerdicts> | undefined): MobileVerdicts {
@@ -238,7 +258,7 @@ export class FingerlyClient {
     const raw = await invokeNative((success, failure) =>
       native.identify(options.tag ?? null, options.submit !== false, success, failure),
     )
-    const parsed = JSON.parse(raw) as NativeIdentifyResult
+    const parsed = parseNative(raw) as unknown as NativeIdentifyResult
     return { ...parsed, verdicts: normalizeVerdicts(parsed.verdicts) }
   }
 
@@ -246,7 +266,7 @@ export class FingerlyClient {
   async collect(): Promise<SignalReport> {
     const native = nativeModule()
     const raw = await invokeNative((success, failure) => native.collect(success, failure))
-    return JSON.parse(raw) as SignalReport
+    return parseNative(raw) as unknown as SignalReport
   }
 }
 
