@@ -65,13 +65,18 @@
 - (void)deleteStoredIdentity:(id)success failure:(id)failure {
   // A keychain delete, synchronous and quick. A refusal carries the
   // `delete_failed` code in `userInfo`, which `errorJSON:` passes on.
-  void (^successCallback)(void) = (void (^)(void))success;
+  //
+  // Both are Lynx callback blocks, `void (^)(id result)`, and are called with
+  // their one argument. Calling the success block through a zero-argument
+  // cast would hand Lynx whatever the argument register held as `result`,
+  // which it retains and converts to a JavaScript value.
+  void (^successCallback)(id) = (void (^)(id))success;
   void (^failureCallback)(id) = (void (^)(id))failure;
   NSError *error = [FingerlyBridge deleteStoredIdentity];
   if (error != nil) {
     failureCallback([self errorJSON:error]);
   } else {
-    successCallback();
+    successCallback(nil);
   }
 }
 
