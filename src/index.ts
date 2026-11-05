@@ -56,6 +56,13 @@ export class FingerlyError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    /**
+     * How long the server asked the app to wait, in milliseconds, from its
+     * `Retry-After`, when the native SDK gave up on a 429 or 503 that named
+     * one. Undefined when no wait was named, and on Android until the native
+     * Android bridge passes the header on.
+     */
+    readonly retryAfterMs?: number,
   ) {
     super(message)
   }
@@ -177,7 +184,11 @@ function parseNativeError(raw: unknown): FingerlyError {
   const status =
     typeof parsed === 'number' && Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
 
-  return new FingerlyError(message, status)
+  const wait = record?.retryAfterMs
+  const retryAfterMs =
+    typeof wait === 'number' && Number.isFinite(wait) && wait >= 0 ? wait : undefined
+
+  return new FingerlyError(message, status, retryAfterMs)
 }
 
 function invokeNative(

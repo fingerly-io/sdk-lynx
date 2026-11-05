@@ -291,6 +291,32 @@ describe('collection and failures', () => {
     })
   })
 
+  it('carries the iOS adapter retryAfterMs on the error', async () => {
+    const native = installNative()
+    native.identify.mockImplementation(
+      (_tag: string | null, _submit: boolean, _success: Success, failure: Failure) => {
+        failure(JSON.stringify({ code: '429', message: 'Too many requests', retryAfterMs: 3000 }))
+      },
+    )
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    await expect(client.identify()).rejects.toMatchObject({ status: 429, retryAfterMs: 3000 })
+  })
+
+  it('leaves retryAfterMs undefined when no usable wait was named', async () => {
+    for (const extra of [{}, { retryAfterMs: '3' }, { retryAfterMs: -1 }]) {
+      const native = installNative()
+      native.identify.mockImplementation(
+        (_tag: string | null, _submit: boolean, _success: Success, failure: Failure) => {
+          failure(JSON.stringify({ code: '503', message: 'unavailable', ...extra }))
+        },
+      )
+      const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+      const error = await client.identify().catch((caught: unknown) => caught)
+      expect(error).toBeInstanceOf(FingerlyError)
+      expect((error as InstanceType<typeof FingerlyError>).retryAfterMs).toBeUndefined()
+    }
+  })
+
   it('does not expose native sentinel codes as HTTP statuses', async () => {
     const native = installNative()
     native.collect.mockImplementation((_success: Success, failure: Failure) => {

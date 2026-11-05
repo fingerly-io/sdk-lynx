@@ -99,6 +99,12 @@
   if ([userInfoState isKindOfClass:[NSString class]]) {
     payload[@"state"] = userInfoState;
   }
+  // The wait a 429 or 503 named in `Retry-After`, when the native bridge
+  // passed one on; `src/index.ts` reads it into `retryAfterMs`.
+  id userInfoRetryAfter = error.userInfo[@"retryAfterMs"];
+  if ([userInfoRetryAfter isKindOfClass:[NSNumber class]]) {
+    payload[@"retryAfterMs"] = userInfoRetryAfter;
+  }
   NSData *data = [NSJSONSerialization dataWithJSONObject:payload options:0 error:nil];
   return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]
     ?: @"{\"code\":\"-1\",\"message\":\"Native SDK failure\"}";

@@ -49,7 +49,10 @@ const version = nativeVersion()
 ```
 
 Failures are surfaced as `FingerlyError`. `status` is populated only for a
-positive HTTP status returned by the native transport.
+positive HTTP status returned by the native transport. When the server asked
+for a pause with `Retry-After`, `retryAfterMs` carries it: wait at least that
+long before identifying again. It is undefined when no wait was named, and on
+Android until the native Android bridge passes the header on.
 
 ## Consent
 
