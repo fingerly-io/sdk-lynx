@@ -5,11 +5,9 @@ import { requireFingerly } from '../generated/Fingerly'
 import type {
   MobileFingerlyOptions,
   MobileIdentifyOptions,
-  MobileVerdicts,
   NativeIdentifyResult,
   SdkPlatform,
   SignalReport,
-  Verdict,
 } from '@fingerly/types'
 
 declare const SystemInfo: { platform?: string } | undefined
@@ -58,6 +56,14 @@ export interface IdentifyOptions extends MobileIdentifyOptions {
    * supports it.
    */
   automatic?: boolean
+}
+
+/**
+ * What `identify({ submit: false })` resolves with. Nothing was sent, so nobody
+ * answered, and the raw report is all there is.
+ */
+export interface RawReportResult {
+  report: SignalReport
 }
 
 export class FingerlyError extends Error {
@@ -234,21 +240,64 @@ function parseNative(raw: string): Record<string, unknown> {
   return parsed as Record<string, unknown>
 }
 
-const UNKNOWN_VERDICT: Verdict = { value: false, confidence: 'low', reasons: [] }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
-function normalizeVerdicts(raw: Partial<MobileVerdicts> | undefined): MobileVerdicts {
-  return {
-    instrumentation: raw?.instrumentation ?? UNKNOWN_VERDICT,
-    mitm: raw?.mitm ?? UNKNOWN_VERDICT,
-    automation: raw?.automation ?? UNKNOWN_VERDICT,
-    tampering: raw?.tampering ?? UNKNOWN_VERDICT,
-    farm: raw?.farm ?? UNKNOWN_VERDICT,
-    jailbreak: raw?.jailbreak ?? UNKNOWN_VERDICT,
-    simulator: raw?.simulator ?? UNKNOWN_VERDICT,
-    root: raw?.root ?? UNKNOWN_VERDICT,
-    emulator: raw?.emulator ?? UNKNOWN_VERDICT,
-    appCloner: raw?.appCloner ?? UNKNOWN_VERDICT,
+// Named rather than spread, so what reaches the app is what the server said and
+// nothing else: a customer's weight or a conclusion from an older native build
+// is left behind here even if the native side still sends one.
+const SERVER_FIELDS = [
+  'requestId',
+  'visitorId',
+  'visitorIsNew',
+  'visitorConfidence',
+  'identifiable',
+  'duplicate',
+  'state',
+  'reason',
+  'suspectScore',
+  'suspectLevel',
+  'report',
+] as const
+
+const TRIGGER_FIELDS = ['signal', 'group', 'confidence', 'reason'] as const
+
+function pick(source: Record<string, unknown>, fields: readonly string[]): Record<string, unknown> {
+  const picked: Record<string, unknown> = {}
+  for (const field of fields) {
+    // An explicit null survives: an unscored check is null, not absent and not 0.
+    if (source[field] !== undefined) picked[field] = source[field]
   }
+  return picked
+}
+
+// iOS leaves a nil out of the JSON and Android writes null. The types promise
+// null, so an answer the server did not give reads the same on both platforms:
+// never undefined, and never an invented 0 or false.
+const NULLABLE_FIELDS = [
+  'visitorIsNew',
+  'visitorConfidence',
+  'identifiable',
+  'duplicate',
+  'suspectScore',
+  'suspectLevel',
+] as const
+
+function serverAnswer(parsed: Record<string, unknown>): NativeIdentifyResult {
+  const triggers = Array.isArray(parsed.triggers)
+    ? parsed.triggers.filter(isRecord).map((trigger) => pick(trigger, TRIGGER_FIELDS))
+    : []
+  const answer = pick(parsed, SERVER_FIELDS)
+  for (const field of NULLABLE_FIELDS) {
+    if (answer[field] === undefined) answer[field] = null
+  }
+  return { ...answer, triggers } as unknown as NativeIdentifyResult
+}
+
+function rawReport(parsed: Record<string, unknown>): RawReportResult {
+  if (!isRecord(parsed.report)) throw new FingerlyError('The SDK produced an unreadable report')
+  return { report: parsed.report as unknown as SignalReport }
 }
 
 export class FingerlyClient {
@@ -274,8 +323,15 @@ export class FingerlyClient {
     currentConsent = state
   }
 
-  /** Rejects with a `ConsentError` while consent is not `granted`. */
-  async identify(options: IdentifyOptions = {}): Promise<NativeIdentifyResult> {
+  /**
+   * Collects and submits, and resolves with the server's answer. With
+   * `submit: false` nothing is sent and only the raw report comes back.
+   * Rejects with a `ConsentError` while consent is not `granted`.
+   */
+  identify(options: IdentifyOptions & { submit: false }): Promise<RawReportResult>
+  identify(options?: IdentifyOptions & { submit?: true }): Promise<NativeIdentifyResult>
+  identify(options: IdentifyOptions): Promise<NativeIdentifyResult | RawReportResult>
+  async identify(options: IdentifyOptions = {}): Promise<NativeIdentifyResult | RawReportResult> {
     const native = nativeModule()
     const raw = await invokeNative((success, failure) =>
       native.identify(
@@ -286,8 +342,8 @@ export class FingerlyClient {
         failure,
       ),
     )
-    const parsed = parseNative(raw) as unknown as NativeIdentifyResult
-    return { ...parsed, verdicts: normalizeVerdicts(parsed.verdicts) }
+    const parsed = parseNative(raw)
+    return options.submit === false ? rawReport(parsed) : serverAnswer(parsed)
   }
 
   /** Submits nothing, but still needs consent: rejects with a `ConsentError` without it. */
@@ -349,18 +405,12 @@ export function nativeVersion(): string | undefined {
 }
 
 export type {
-  AndroidVerdicts,
-  Confidence,
   IdentifyTrigger,
   IntegrityReport,
-  IosVerdicts,
   Lie,
-  MobileVerdicts,
   NativeIdentifyResult,
-  NativeVerdicts,
   SdkPlatform,
   SignalOutcome,
   SignalReport,
   SignalStatus,
-  Verdict,
 } from '@fingerly/types'

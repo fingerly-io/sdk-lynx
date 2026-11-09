@@ -48,14 +48,16 @@ import { load } from '@fingerly/lynx'
 const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: 'granted' })
 const result = await fingerly.identify({ tag: 'checkout' })
 
-if (result.verdicts.jailbreak.value) {
-  // Send result.requestId to your backend and make the decision there.
-}
+// Send result.requestId to your backend and make the decision there.
 ```
 
 `load` reports `lynx-ios` or `lynx-android`, allowing the server to select the
-correct native risk profile. `identify()` defaults to submission; pass
-`{ submit: false }` to collect and score locally. Pass `{ automatic: true }` for
+correct native risk profile. `identify()` defaults to submission and resolves
+with what the server said: `requestId`, `visitorId`, `suspectScore`,
+`suspectLevel` and `triggers`. `visitorConfidence`, `visitorIsNew`,
+`identifiable` and `duplicate` can be `null` when the server did not say, which
+is not the same as `0` or `false`. Pass `{ submit: false }` to collect without
+sending; it resolves with `{ report }`, the raw report and nothing else. Pass `{ automatic: true }` for
 a call your app makes on its own (on start, on a timer, on returning to the
 foreground): it joins an identification already in flight instead of starting
 another, and waits out a transient failure instead of repeating it. On Android

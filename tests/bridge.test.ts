@@ -173,17 +173,80 @@ describe('identify', () => {
 
   it('keeps an unscored result null', async () => {
     installNative({ ...fullResult, suspectScore: null, suspectLevel: null })
-    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify({ submit: false })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.suspectScore).toBeNull()
     expect(result.suspectLevel).toBeNull()
   })
 
-  it('fills verdicts unavailable on the current native platform', async () => {
+  it.each([
+    ['Android writes null', { visitorIsNew: null, visitorConfidence: null, identifiable: null, duplicate: null, suspectScore: null, suspectLevel: null }],
+    ['iOS leaves the key out', {}],
+  ])('reads an answer the server did not give as null: %s', async (_label, unsaid) => {
+    installNative({ requestId: 'req_dup', visitorId: '', state: 'scored', triggers: [], report: fullResult.report, ...unsaid })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+
+    for (const field of ['visitorIsNew', 'visitorConfidence', 'identifiable', 'duplicate', 'suspectScore', 'suspectLevel'] as const) {
+      expect(result[field]).toBeNull()
+    }
+  })
+
+  it('keeps a duplicate answer true with its visitor fields empty', async () => {
+    installNative({ requestId: 'req_dup', visitorId: '', duplicate: true, state: 'scored', triggers: [], report: fullResult.report })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+
+    expect(result.duplicate).toBe(true)
+    expect(result.visitorId).toBe('')
+    expect(result.visitorConfidence).toBeNull()
+  })
+
+  it('never hands the app a weight, even when the native side still sends one', async () => {
     installNative()
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
-    expect(result.verdicts.jailbreak.value).toBe(true)
-    expect(result.verdicts.root).toEqual({ value: false, confidence: 'low', reasons: [] })
-    expect(result.verdicts.emulator.reasons).toEqual([])
+    expect(result.triggers).toEqual([{ signal: 'frida', group: 'instrumentation', confidence: 'high', reason: 'image' }])
+    expect(JSON.stringify(result)).not.toContain('weight')
+  })
+
+  it('never hands the app a local conclusion from a stale or forged native answer', async () => {
+    installNative()
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+    expect(result).not.toHaveProperty('verdicts')
+    expect(JSON.stringify(result)).not.toContain('jailbreak')
+  })
+
+  it.each([
+    ['missing', undefined],
+    ['null', null],
+    ['not a list', 'frida'],
+    ['an object', { signal: 'frida' }],
+  ])('reads triggers that are %s as none', async (_label, triggers) => {
+    installNative({ requestId: 'req_1', triggers, report: fullResult.report })
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    await expect(client.identify()).resolves.toMatchObject({ requestId: 'req_1', triggers: [] })
+  })
+
+  it('drops trigger entries that are not objects and keeps the rest', async () => {
+    installNative({ triggers: ['frida', null, 3, ['x'], { signal: 'frida', weight: 9 }], report: {} })
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    expect((await client.identify()).triggers).toEqual([{ signal: 'frida' }])
+  })
+
+  it('returns only the raw report for submit: false', async () => {
+    // Forged on purpose: an answer full of server fields and a local conclusion
+    // for a check nobody sent. None of it may survive.
+    installNative()
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    await expect(client.identify({ submit: false })).resolves.toEqual({ report: fullResult.report })
+  })
+
+  it.each([
+    ['missing', {}],
+    ['null', { report: null }],
+    ['text', { report: 'text' }],
+    ['a list', { report: [1] }],
+  ])('rejects submit: false when the report is %s', async (_label, answer) => {
+    installNative(answer)
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    await expect(client.identify({ submit: false })).rejects.toBeInstanceOf(FingerlyError)
   })
 })
 
@@ -355,10 +418,11 @@ describe('unreadable native answers', () => {
   })
 
   it('tolerates a result without reason and with members it does not know', async () => {
-    installNative({ requestId: 'req_1', verdicts: {}, report: { schema: 1, sources: {} }, somethingNew: { a: 1 } })
+    installNative({ requestId: 'req_1', report: { schema: 1, sources: {} }, somethingNew: { a: 1 } })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.requestId).toBe('req_1')
     expect(result.reason).toBeUndefined()
+    expect(result).not.toHaveProperty('somethingNew')
   })
 })
 
