@@ -245,8 +245,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 // Named rather than spread, so what reaches the app is what the server said and
-// nothing else: a customer's weight or a conclusion from an older native build
-// is left behind here even if the native side still sends one.
+// nothing else: a signal name or a conclusion from an older native build is
+// left behind here even if the native side still sends one.
 const SERVER_FIELDS = [
   'requestId',
   'visitorId',
@@ -261,8 +261,6 @@ const SERVER_FIELDS = [
   'report',
 ] as const
 
-const TRIGGER_FIELDS = ['signal', 'group', 'confidence', 'reason'] as const
-
 function pick(source: Record<string, unknown>, fields: readonly string[]): Record<string, unknown> {
   const picked: Record<string, unknown> = {}
   for (const field of fields) {
@@ -272,9 +270,9 @@ function pick(source: Record<string, unknown>, fields: readonly string[]): Recor
   return picked
 }
 
-// iOS leaves a nil out of the JSON and Android writes null. The types promise
-// null, so an answer the server did not give reads the same on both platforms:
-// never undefined, and never an invented 0 or false.
+// A native build may write null or leave the key out. The types promise null,
+// so an answer the server did not give reads the same on both platforms: never
+// undefined, and never an invented 0 or false.
 const NULLABLE_FIELDS = [
   'visitorIsNew',
   'visitorConfidence',
@@ -285,14 +283,11 @@ const NULLABLE_FIELDS = [
 ] as const
 
 function serverAnswer(parsed: Record<string, unknown>): NativeIdentifyResult {
-  const triggers = Array.isArray(parsed.triggers)
-    ? parsed.triggers.filter(isRecord).map((trigger) => pick(trigger, TRIGGER_FIELDS))
-    : []
   const answer = pick(parsed, SERVER_FIELDS)
   for (const field of NULLABLE_FIELDS) {
     if (answer[field] === undefined) answer[field] = null
   }
-  return { ...answer, triggers } as unknown as NativeIdentifyResult
+  return answer as unknown as NativeIdentifyResult
 }
 
 function rawReport(parsed: Record<string, unknown>): RawReportResult {
@@ -405,7 +400,6 @@ export function nativeVersion(): string | undefined {
 }
 
 export type {
-  IdentifyTrigger,
   IntegrityReport,
   Lie,
   NativeIdentifyResult,

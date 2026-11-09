@@ -53,8 +53,14 @@ const result = await fingerly.identify({ tag: 'checkout' })
 
 `load` reports `lynx-ios` or `lynx-android`, allowing the server to select the
 correct native risk profile. `identify()` defaults to submission and resolves
-with what the server said: `requestId`, `visitorId`, `suspectScore`,
-`suspectLevel` and `triggers`. `visitorConfidence`, `visitorIsNew`,
+with what the server said: `requestId`, `visitorId` and, by default,
+`suspectScore` and `suspectLevel`. The score is a convenience for showing a
+result straight away. Each SDK key has a setting that hides it from apps, and
+then both fields are `null`, exactly as on a check nobody scored: an app cannot
+tell which it was, so read `null` as "no answer here", never as clean. The
+signals behind a score never reach the device; read them on your backend,
+through the server-side event read by `requestId` or webhooks, or in the
+dashboard. `visitorConfidence`, `visitorIsNew`,
 `identifiable` and `duplicate` can be `null` when the server did not say, which
 is not the same as `0` or `false`. Pass `{ submit: false }` to collect without
 sending; it resolves with `{ report }`, the raw report and nothing else. Pass `{ automatic: true }` for

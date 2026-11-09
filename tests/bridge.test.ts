@@ -167,8 +167,25 @@ describe('identify', () => {
     expect(result.requestId).toBe('req_123')
     expect(result.visitorId).toBe('vis_123')
     expect(result.suspectScore).toBe(42)
-    expect(result.triggers).toHaveLength(1)
+    expect(result).not.toHaveProperty('triggers')
     expect(result.report.schema).toBe(1)
+  })
+
+  it('carries a score from an answer that has no signals', async () => {
+    installNative({ requestId: 'req_1', visitorId: 'vis_1', suspectScore: 41, suspectLevel: 'medium', report: fullResult.report })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+    expect(result.suspectScore).toBe(41)
+    expect(result.suspectLevel).toBe('medium')
+    expect(result).not.toHaveProperty('triggers')
+  })
+
+  it('reads an answer with neither score nor signals, the same as a hidden score', async () => {
+    installNative({ requestId: 'req_1', visitorId: 'vis_1', state: 'scored', report: fullResult.report })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+    expect(result.requestId).toBe('req_1')
+    expect(result.suspectScore).toBeNull()
+    expect(result.suspectLevel).toBeNull()
+    expect(result).not.toHaveProperty('triggers')
   })
 
   it('keeps an unscored result null', async () => {
@@ -176,13 +193,15 @@ describe('identify', () => {
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.suspectScore).toBeNull()
     expect(result.suspectLevel).toBeNull()
+    expect(result.suspectScore).not.toBe(0)
+    expect(result.suspectLevel).not.toBe('')
   })
 
   it.each([
     ['Android writes null', { visitorIsNew: null, visitorConfidence: null, identifiable: null, duplicate: null, suspectScore: null, suspectLevel: null }],
     ['iOS leaves the key out', {}],
   ])('reads an answer the server did not give as null: %s', async (_label, unsaid) => {
-    installNative({ requestId: 'req_dup', visitorId: '', state: 'scored', triggers: [], report: fullResult.report, ...unsaid })
+    installNative({ requestId: 'req_dup', visitorId: '', state: 'scored', report: fullResult.report, ...unsaid })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
 
     for (const field of ['visitorIsNew', 'visitorConfidence', 'identifiable', 'duplicate', 'suspectScore', 'suspectLevel'] as const) {
@@ -191,7 +210,7 @@ describe('identify', () => {
   })
 
   it('keeps a duplicate answer true with its visitor fields empty', async () => {
-    installNative({ requestId: 'req_dup', visitorId: '', duplicate: true, state: 'scored', triggers: [], report: fullResult.report })
+    installNative({ requestId: 'req_dup', visitorId: '', duplicate: true, state: 'scored', report: fullResult.report })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
 
     expect(result.duplicate).toBe(true)
@@ -199,10 +218,12 @@ describe('identify', () => {
     expect(result.visitorConfidence).toBeNull()
   })
 
-  it('never hands the app a weight, even when the native side still sends one', async () => {
+  it('never hands the app a signal name or weight, even when the native side still sends them', async () => {
+    // fullResult answers like an older native build, with a trigger in it.
     installNative()
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
-    expect(result.triggers).toEqual([{ signal: 'frida', group: 'instrumentation', confidence: 'high', reason: 'image' }])
+    expect(result).not.toHaveProperty('triggers')
+    expect(JSON.stringify(result)).not.toContain('instrumentation')
     expect(JSON.stringify(result)).not.toContain('weight')
   })
 
@@ -214,20 +235,18 @@ describe('identify', () => {
   })
 
   it.each([
-    ['missing', undefined],
     ['null', null],
     ['not a list', 'frida'],
     ['an object', { signal: 'frida' }],
-  ])('reads triggers that are %s as none', async (_label, triggers) => {
-    installNative({ requestId: 'req_1', triggers, report: fullResult.report })
-    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
-    await expect(client.identify()).resolves.toMatchObject({ requestId: 'req_1', triggers: [] })
-  })
-
-  it('drops trigger entries that are not objects and keeps the rest', async () => {
-    installNative({ triggers: ['frida', null, 3, ['x'], { signal: 'frida', weight: 9 }], report: {} })
-    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
-    expect((await client.identify()).triggers).toEqual([{ signal: 'frida' }])
+    ['a list of anything', ['frida', null, 3, ['x'], { signal: 'frida', weight: 9 }]],
+  ])('ignores stale triggers that are %s, and any unknown member', async (_label, triggers) => {
+    installNative({ requestId: 'req_1', suspectScore: 12, triggers, futureMember: { nested: true }, report: fullResult.report })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+    expect(result.requestId).toBe('req_1')
+    expect(result.suspectScore).toBe(12)
+    expect(result).not.toHaveProperty('triggers')
+    expect(result).not.toHaveProperty('futureMember')
+    expect(JSON.stringify(result)).not.toContain('"frida"')
   })
 
   it('returns only the raw report for submit: false', async () => {

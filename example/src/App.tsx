@@ -14,7 +14,7 @@ export function App() {
     try {
       const fingerly = await load(options)
       const result = await fingerly.identify({ tag: 'lynx-example' })
-      setOutput(`${result.requestId} · score ${result.suspectScore ?? 'unscored'}`)
+      setOutput(`${result.requestId} · score ${result.suspectScore ?? 'unavailable'}`)
     } catch (error) {
       setOutput(error instanceof Error ? error.message : String(error))
     }
