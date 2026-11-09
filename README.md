@@ -20,6 +20,21 @@ The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide
   `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run
   `pod install`, then rebuild.
 
+The Android module depends on `io.fingerly:fingerly:0.1.0` from Fingerly's Maven
+repository and declares no repositories of its own, so Android hosts add it to
+the repositories in `settings.gradle`:
+
+```groovy
+maven { url 'https://maven.fingerly.io' }
+```
+
+That repository is not live yet; see
+[Native SDK development dependencies](#native-sdk-development-dependencies) for
+the local route until it is.
+
+This bridge is licensed under Apache-2.0. The native SDK it depends on is a
+closed binary under the Fingerly SDK License.
+
 The package's `lynx.lib.json` registers the `Fingerly` Native Module. Native
 Modules are available from Lynx background-thread scripting, so call the SDK
 from an event handler, effect, or other background function.
@@ -137,8 +152,10 @@ Module is an actionable integration error.
 
 ## Native SDK development dependencies
 
-The native SDKs are not published yet. For Android, publish the sibling
-[Android SDK](https://github.com/fingerly-io/sdk-android) to Maven Local:
+The native SDKs are not published yet. For Android, until
+`https://maven.fingerly.io` is live and for contributors at any time, publish
+the sibling [Android SDK](https://github.com/fingerly-io/sdk-android) to Maven
+Local, and add `mavenLocal()` after that repository in the host:
 
 ```sh
 ./gradlew :fingerly:publishToMavenLocal
