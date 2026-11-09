@@ -90,14 +90,27 @@ public final class Fingerly extends FingerlySpec {
 
       @Override
       public void onError(String code, String message) {
-        failureCallback.invoke(errorJson(code, message));
+        failureCallback.invoke(errorJson(code, message, null));
+      }
+
+      @Override
+      public void onError(String code, String message, Long retryAfterMs) {
+        failureCallback.invoke(errorJson(code, message, retryAfterMs));
       }
     };
   }
 
   private static String errorJson(String code, String message) {
+    return errorJson(code, message, null);
+  }
+
+  private static String errorJson(String code, String message, Long retryAfterMs) {
     try {
-      return new JSONObject().put("code", code).put("message", message).toString();
+      JSONObject error = new JSONObject().put("code", code).put("message", message);
+      if (retryAfterMs != null) {
+        error.put("retryAfterMs", retryAfterMs.longValue());
+      }
+      return error.toString();
     } catch (JSONException ignored) {
       return "{\"code\":\"-1\",\"message\":\"Native SDK failure\"}";
     }
