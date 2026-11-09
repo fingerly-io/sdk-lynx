@@ -1,15 +1,15 @@
 {
   "name": "@fingerly/lynx",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": { "access": "public" },
   "packageManager": "pnpm@9.0.0",
   "description": "Lynx SDK backed by Fingerly's native iOS and Android SDKs",
   "license": "Apache-2.0",
-  "repository": {"type": "git", "url": "https://github.com/fingerly-io/sdk-lynx.git"},
+  "repository": {"type": "git", "url": "https://github.com/fingerly-io/sdks.git", "directory": "client/mobile/lynx"},
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "files": ["android", "generated", "ios", "src", "types", "lynx.lib.json", "README.md"],
+  "files": ["android", "!android/build", "!android/.gradle", "generated", "ios", "!ios/Pods", "!ios/Frameworks", "src", "types", "lynx.lib.json", "README.md"],
   "scripts": {
     "codegen": "lynx-autolink-codegen",
     "build:types": "pnpm --filter @fingerly/types build",

@@ -158,27 +158,22 @@ DeviceCheck, Android packages, or the native TLS connection. Falling back to a
 partial report could mark a compromised device as clean, so a missing Native
 Module is an actionable integration error.
 
-## Native SDK development dependencies
+## Native SDK dependencies
 
-The native SDKs are not published yet. For Android, until
-`https://maven.fingerly.io` is live and for contributors at any time, publish
-the sibling [Android SDK](https://github.com/fingerly-io/sdk-android) to Maven
-Local, and add `mavenLocal()` after that repository in the host:
+On iOS, `pod install` downloads the matching `Fingerly.xcframework` from
+`https://maven.fingerly.io/ios/` and verifies its checksum, so the Podfile needs
+no entry for the native SDK. The same binary is published as a Swift package at
+[sdk-ios](https://github.com/fingerly-io/sdk-ios).
 
-```sh
-./gradlew :fingerly:publishToMavenLocal
-```
-
-For iOS development, point the host Podfile at the sibling
-[iOS SDK](https://github.com/fingerly-io/sdk-ios) checkout before resolving
-`fingerly-lynx`.
+On Android, the module resolves `io.fingerly:fingerly` from
+`https://maven.fingerly.io`, added to the host's repositories as shown above.
 
 ## Development
 
 Clone recursively so `@fingerly/types` is available:
 
 ```sh
-git clone --recurse-submodules git@github.com:fingerly-io/sdk-lynx.git
+git clone --recurse-submodules https://github.com/fingerly-io/sdk-lynx.git
 pnpm install
 pnpm codegen
 pnpm test
