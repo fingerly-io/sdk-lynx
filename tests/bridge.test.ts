@@ -436,11 +436,18 @@ describe('unreadable native answers', () => {
     }
   })
 
-  it('tolerates a result without reason and with members it does not know', async () => {
-    installNative({ requestId: 'req_1', report: { schema: 1, sources: {} }, somethingNew: { a: 1 } })
+  it('passes on only what the server tells an app', async () => {
+    installNative({
+      requestId: 'req_1',
+      state: 'unavailable',
+      reason: 'ip-database-not-loaded',
+      report: { schema: 1, sources: {} },
+      somethingNew: { a: 1 },
+    })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.requestId).toBe('req_1')
-    expect(result.reason).toBeUndefined()
+    expect(result.state).toBe('unavailable')
+    expect(result).not.toHaveProperty('reason')
     expect(result).not.toHaveProperty('somethingNew')
   })
 })

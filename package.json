@@ -1,6 +1,6 @@
 {
   "name": "@fingerly/lynx",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publishConfig": { "access": "public" },
   "packageManager": "pnpm@9.0.0",
   "description": "Lynx SDK backed by Fingerly's native iOS and Android SDKs",
