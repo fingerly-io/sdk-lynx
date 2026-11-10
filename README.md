@@ -28,10 +28,6 @@ the repositories in `settings.gradle`:
 maven { url 'https://maven.fingerly.io' }
 ```
 
-That repository is not live yet; see
-[Native SDK development dependencies](#native-sdk-development-dependencies) for
-the local route until it is.
-
 This bridge is licensed under Apache-2.0. The native SDK it depends on is a
 closed binary under the Fingerly SDK License.
 
