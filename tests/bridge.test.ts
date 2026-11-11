@@ -102,20 +102,40 @@ describe('platform contract', () => {
   it('reports the iOS host', async () => {
     const native = installNative()
     await load({ apiKey: 'fly_pk_development_test' })
-    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-ios', 'pending')
+    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-ios', 'pending', 0)
   })
 
   it('reports the Android host and forwards a custom endpoint', async () => {
     runtime.SystemInfo = { platform: 'Android' }
     const native = installNative()
     await load({ apiKey: 'fly_pk_development_test', endpoint: 'https://edge.example' })
-    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', 'https://edge.example', 'lynx-android', 'pending')
+    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', 'https://edge.example', 'lynx-android', 'pending', 0)
   })
 
   it.each(['Harmony', 'windows', 'macOS', 'web'])('rejects unsupported %s hosts', async (platform) => {
     runtime.SystemInfo = { platform }
     installNative()
     await expect(load({ apiKey: 'fly_pk_development_test' })).rejects.toThrow(/iOS and Android only/)
+  })
+})
+
+describe('Play Integrity', () => {
+  it('hands the project number to the native configure', async () => {
+    runtime.SystemInfo = { platform: 'Android' }
+    const native = installNative()
+    await load({ apiKey: 'fly_pk_development_test', playIntegrityCloudProjectNumber: 123456789012 })
+    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-android', 'pending', 123456789012)
+  })
+
+  it('refuses a value that is not a project number before configuring', async () => {
+    runtime.SystemInfo = { platform: 'Android' }
+    for (const bad of [0, -5, 1.5, Number.NaN, '123456789012']) {
+      const native = installNative()
+      await expect(
+        load({ apiKey: 'fly_pk_development_test', playIntegrityCloudProjectNumber: bad as number }),
+      ).rejects.toThrow(TypeError)
+      expect(native.configure).not.toHaveBeenCalled()
+    }
   })
 })
 
@@ -286,7 +306,7 @@ describe('consent', () => {
   it.each(['granted', 'pending', 'denied'] as const)('passes %s through to the native configure', async (consent) => {
     const native = installNative()
     const client = await load({ apiKey: 'fly_pk_development_test', consent })
-    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-ios', consent)
+    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-ios', consent, 0)
     expect(client.consent).toBe(consent)
   })
 

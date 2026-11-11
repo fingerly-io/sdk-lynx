@@ -24,10 +24,20 @@ public final class Fingerly extends FingerlySpec {
 
   @Override
   @LynxMethod
-  public void configure(String apiKey, String endpoint, String platform, String consent) {
+  public void configure(
+      String apiKey,
+      String endpoint,
+      String platform,
+      String consent,
+      double playIntegrityCloudProjectNumber) {
     // `src/index.ts` always sends a consent, `pending` when the app passed none,
     // so the state is set rather than left as it was.
-    FingerlyBridge.configure(applicationContext, apiKey, endpoint, platform, consent);
+    //
+    // The project number is 0 when the app passed none. The Android SDK builds
+    // the Play Integrity provider from the optional fingerly-play-integrity
+    // artifact when the app has it, and ignores the number when it does not.
+    FingerlyBridge.configure(
+        applicationContext, apiKey, endpoint, platform, consent, (long) playIntegrityCloudProjectNumber);
   }
 
   @Override
