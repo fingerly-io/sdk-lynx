@@ -164,6 +164,14 @@ no entry for the native SDK. The same binary is published as a Swift package at
 On Android, the module resolves `io.fingerly:fingerly` from
 `https://maven.fingerly.io`, added to the host's repositories as shown above.
 
+**Play Integrity is not available through this bridge yet.** The Android SDK
+has an optional artifact, `io.fingerly:fingerly-play-integrity` (server ADR
+0026), that adds Google Play Integrity verdicts to events. It is enabled by
+passing an integrity token provider when the native SDK is loaded, which this
+bridge does not do yet, so adding the artifact to an app built on this bridge
+has no effect. Native Android apps can use it today; see the Android SDK's
+`fingerly-play-integrity/README.md`.
+
 ## Development
 
 Clone recursively so `@fingerly/types` is available:
