@@ -164,13 +164,33 @@ no entry for the native SDK. The same binary is published as a Swift package at
 On Android, the module resolves `io.fingerly:fingerly` from
 `https://maven.fingerly.io`, added to the host's repositories as shown above.
 
-**Play Integrity is not available through this bridge yet.** The Android SDK
-has an optional artifact, `io.fingerly:fingerly-play-integrity` (server ADR
-0026), that adds Google Play Integrity verdicts to events. It is enabled by
-passing an integrity token provider when the native SDK is loaded, which this
-bridge does not do yet, so adding the artifact to an app built on this bridge
-has no effect. Native Android apps can use it today; see the Android SDK's
-`fingerly-play-integrity/README.md`.
+**Play Integrity (Android, optional).** The Android SDK has an optional
+artifact, `io.fingerly:fingerly-play-integrity` (server ADR 0026), that adds
+Google Play Integrity verdicts to events. To use it, add the artifact to the
+app and pass your Google Cloud project number, the one linked to the app in
+Play Console, to `load`:
+
+```kotlin
+// the app module's build.gradle.kts
+dependencies {
+    implementation("io.fingerly:fingerly-play-integrity:0.1.0")
+}
+```
+
+```ts
+const fingerly = await load({
+  apiKey: 'fly_pk_production_…',
+  playIntegrityCloudProjectNumber: 123456789012,
+})
+```
+
+The native SDK finds the artifact on its own; this bridge does not depend on
+it. Without the artifact the number is ignored and nothing fails, and on iOS it
+is ignored. The rest of the setup (the service account uploaded to your
+Fingerly project, the daily budget) is in the Android SDK's
+`fingerly-play-integrity/README.md`. This needs a native Android SDK that has
+`FingerlyBridge.configure` with a project number, the release after
+`io.fingerly:fingerly:0.1.0`.
 
 ## Development
 
