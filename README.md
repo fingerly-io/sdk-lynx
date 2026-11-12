@@ -20,7 +20,7 @@ The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide
   `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run
   `pod install`, then rebuild.
 
-The Android module depends on `io.fingerly:fingerly:0.1.0` from Fingerly's Maven
+The Android module depends on `io.fingerly:fingerly:0.2.0` from Fingerly's Maven
 repository and declares no repositories of its own, so Android hosts add it to
 the repositories in `settings.gradle`:
 
