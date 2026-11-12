@@ -6,7 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol FingerlySpec <LynxModule>
 
-- (void)configure:(NSString *)apiKey endpoint:(NSString *)endpoint platform:(NSString *)platform consent:(NSString *)consent;
+- (void)configure:(NSString *)apiKey endpoint:(NSString *)endpoint platform:(NSString *)platform consent:(NSString *)consent playIntegrityCloudProjectNumber:(double)playIntegrityCloudProjectNumber;
 - (void)setConsent:(NSString *)state;
 - (void)identify:(nullable NSString *)tag submit:(BOOL)submit automatic:(BOOL)automatic success:(id)success failure:(id)failure;
 - (void)collect:(id)success failure:(id)failure;

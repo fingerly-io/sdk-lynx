@@ -9,7 +9,7 @@
 
 + (NSDictionary<NSString *, NSString *> *)methodLookup {
   return @{
-    @"configure" : NSStringFromSelector(@selector(configure:endpoint:platform:consent:)),
+    @"configure" : NSStringFromSelector(@selector(configure:endpoint:platform:consent:playIntegrityCloudProjectNumber:)),
     @"setConsent" : NSStringFromSelector(@selector(setConsent:)),
     @"identify" : NSStringFromSelector(@selector(identify:submit:automatic:success:failure:)),
     @"collect" : NSStringFromSelector(@selector(collect:failure:)),
@@ -19,11 +19,13 @@
 }
 
 - (void)configure:(NSString *)apiKey
-         endpoint:(NSString *)endpoint
-         platform:(NSString *)platform
-          consent:(NSString *)consent {
+                           endpoint:(NSString *)endpoint
+                           platform:(NSString *)platform
+                            consent:(NSString *)consent
+    playIntegrityCloudProjectNumber:(double)playIntegrityCloudProjectNumber {
   // `src/index.ts` always sends a consent, `pending` when the app passed none.
   // The native bridge reads anything it does not recognise as `pending`.
+  // The Play Integrity project number is Android only and not read here.
   [FingerlyBridge configureWithApiKey:apiKey endpoint:endpoint platform:platform consent:consent];
 }
 

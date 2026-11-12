@@ -13,7 +13,13 @@ import type {
 declare const SystemInfo: { platform?: string } | undefined
 
 interface FingerlyNativeModule {
-  configure(apiKey: string, endpoint: string, platform: string, consent: ConsentState): void
+  configure(
+    apiKey: string,
+    endpoint: string,
+    platform: string,
+    consent: ConsentState,
+    playIntegrityCloudProjectNumber: number,
+  ): void
   setConsent(state: ConsentState): void
   identify(
     tag: string | null,
@@ -44,6 +50,15 @@ export interface FingerlyOptions extends MobileFingerlyOptions {
    * where another lawful basis applies.
    */
   consent?: ConsentState
+  /**
+   * Android only: your Google Cloud project number, the one linked to the app
+   * in Play Console, to add Play Integrity verdicts to events (server ADR
+   * 0026). It takes effect only when the app also depends on the optional
+   * `io.fingerly:fingerly-play-integrity` artifact; without it the number is
+   * ignored and nothing fails. Ignored on iOS. Omit it to leave Play
+   * Integrity off.
+   */
+  playIntegrityCloudProjectNumber?: number
 }
 
 export interface IdentifyOptions extends MobileIdentifyOptions {
@@ -116,6 +131,20 @@ function assertConsentState(state: unknown): asserts state is ConsentState {
   if (!isConsentState(state)) {
     throw new TypeError(
       `Fingerly consent must be 'granted', 'pending' or 'denied' (received ${JSON.stringify(state)})`,
+    )
+  }
+}
+
+/**
+ * A Google Cloud project number is a positive whole number. Anything else is a
+ * typo the app should hear about at `load`, not a Play Integrity setup that
+ * silently does nothing.
+ */
+function assertCloudProjectNumber(value: unknown): asserts value is number | undefined {
+  if (value === undefined) return
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError(
+      `Fingerly playIntegrityCloudProjectNumber must be a positive whole number (received ${JSON.stringify(value)})`,
     )
   }
 }
@@ -355,10 +384,13 @@ export class FingerlyClient {
 export async function load(options: FingerlyOptions): Promise<FingerlyClient> {
   const consent = options.consent ?? 'pending'
   assertConsentState(consent)
+  const playIntegrity = options.playIntegrityCloudProjectNumber
+  assertCloudProjectNumber(playIntegrity)
 
   const native = nativeModule()
   try {
-    native.configure(options.apiKey, options.endpoint ?? '', platformName(), consent)
+    // 0 means no Play Integrity; the iOS module accepts the argument and ignores it.
+    native.configure(options.apiKey, options.endpoint ?? '', platformName(), consent, playIntegrity ?? 0)
   } catch (error) {
     throw parseNativeError(error)
   }
