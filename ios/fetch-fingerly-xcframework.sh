@@ -68,8 +68,17 @@ if [ -n "${FINGERLY_XCFRAMEWORK_PATH:-}" ]; then
   rm -rf "$dest"
   mkdir -p "$dest"
   mv "$work/expanded/Fingerly.xcframework" "$dest/"
-  printf '%s' "$wanted" > "$stamp"
+  # Never the pinned stamp: a later run without the variable replaces a local
+  # copy with the verified download instead of keeping it as if it were one.
+  printf '%s' "local:$FINGERLY_XCFRAMEWORK_PATH" > "$stamp"
   exit 0
+fi
+
+# A download is only ever installed against a pinned checksum. An empty one is
+# a broken package, not a reason to install whatever the host serves.
+if ! printf '%s' "$sha256" | grep -qE '^[0-9a-f]{64}$'; then
+  echo "error: no valid checksum recorded for $url; refusing to install an unverified binary" >&2
+  exit 1
 fi
 
 if [ -d "$dest/Fingerly.xcframework" ] && [ "$(cat "$stamp" 2>/dev/null)" = "$wanted" ]; then
@@ -81,14 +90,10 @@ if ! curl --fail --silent --show-error --location --proto '=https' --retry 3 --o
   exit 1
 fi
 
-if [ -n "$sha256" ]; then
-  actual="$(shasum -a 256 "$work/sdk.zip" | cut -d' ' -f1)"
-  if [ "$actual" != "$sha256" ]; then
-    echo "error: $url has checksum $actual, expected $sha256" >&2
-    exit 1
-  fi
-else
-  echo "warning: no checksum recorded, $url was not verified (expected only in a git checkout)" >&2
+actual="$(shasum -a 256 "$work/sdk.zip" | cut -d' ' -f1)"
+if [ "$actual" != "$sha256" ]; then
+  echo "error: $url has checksum $actual, expected $sha256" >&2
+  exit 1
 fi
 
 unzip -q "$work/sdk.zip" -d "$work/expanded"
