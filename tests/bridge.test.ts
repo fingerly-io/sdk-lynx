@@ -166,11 +166,13 @@ describe('0.3.0 version and v3 contract parity', () => {
     const v3NativeSignals = [
       'attestation_failed',
       'attestation_missing',
+      'attestation_downgrade',
       'app_attest_key_churn',
       'play_device_integrity_failed',
       'play_app_unrecognized',
       'device_inconsistent',
       'report_incomplete',
+      'probe_errors',
       'tampering',
       'custom_root_ca',
       'secondary_user_profile',
