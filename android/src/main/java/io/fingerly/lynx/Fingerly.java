@@ -7,6 +7,8 @@ import com.lynx.jsbridge.LynxNativeModule;
 import com.lynx.react.bridge.Callback;
 import com.lynx.tasm.behavior.LynxContext;
 import io.fingerly.lynx.generated.FingerlySpec;
+import io.fingerly.sdk.AppChecksProvider;
+import io.fingerly.sdk.PlayIntegrityProvider;
 import io.fingerly.sdk.bridge.BridgeCallback;
 import io.fingerly.sdk.bridge.FingerlyBridge;
 import org.json.JSONException;
@@ -16,6 +18,9 @@ import org.json.JSONObject;
 @LynxNativeModule(name = "Fingerly")
 public final class Fingerly extends FingerlySpec {
   private final Context applicationContext;
+
+  /** Why the last `configure` was refused, or null when it was accepted. */
+  @Nullable private volatile String configurationError;
 
   public Fingerly(LynxContext context) {
     super(context);
@@ -39,8 +44,44 @@ public final class Fingerly extends FingerlySpec {
         playIntegrityCloudProjectNumber > 0
             ? Long.valueOf((long) playIntegrityCloudProjectNumber)
             : null;
+
+    // A project number with no provider to use it would leave Play Integrity off without a
+    // word. `configure` has no callback, so the configuration is refused, nothing is changed,
+    // and every later `identify` and `collect` fails with `play_integrity_unavailable` until a
+    // complete configuration replaces it.
+    PlayIntegrityProvider playIntegrity = OptionalProviders.playIntegrity();
+    String error =
+        OptionalProviders.playIntegrityError(
+            projectNumber, playIntegrity, FingerlyBridge.hasPlayIntegrityProvider());
+    configurationError = error;
+    if (error != null) {
+      return;
+    }
+
+    // The optional providers are registered whenever the app links their artifacts, as the
+    // React Native module does. A Play Integrity provider the app registered by hand is kept.
+    AppChecksProvider appChecks = OptionalProviders.appChecks();
+    if (appChecks != null) {
+      FingerlyBridge.setAppChecks(appChecks);
+    }
+    if (projectNumber != null
+        && playIntegrity != null
+        && !FingerlyBridge.hasPlayIntegrityProvider()) {
+      FingerlyBridge.setPlayIntegrity(playIntegrity, projectNumber);
+    }
+
     FingerlyBridge.configure(
         applicationContext, apiKey, endpoint, platform, consent, projectNumber);
+  }
+
+  /** Fails the call with the stored configuration error, if there is one. */
+  private boolean refuseUnconfigured(Object failure) {
+    String error = configurationError;
+    if (error == null) {
+      return false;
+    }
+    ((Callback) failure).invoke(errorJson(OptionalProviders.PLAY_INTEGRITY_UNAVAILABLE, error));
+    return true;
   }
 
   @Override
@@ -53,12 +94,18 @@ public final class Fingerly extends FingerlySpec {
   @LynxMethod
   public void identify(
       @Nullable String tag, boolean submit, boolean automatic, Object success, Object failure) {
+    if (refuseUnconfigured(failure)) {
+      return;
+    }
     FingerlyBridge.identify(tag, submit, automatic, settle(success, failure));
   }
 
   @Override
   @LynxMethod
   public void collect(Object success, Object failure) {
+    if (refuseUnconfigured(failure)) {
+      return;
+    }
     FingerlyBridge.collect(settle(success, failure));
   }
 
