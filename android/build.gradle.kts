@@ -2,6 +2,13 @@ plugins {
   id("com.android.library")
 }
 
+repositories {
+  mavenLocal()
+  google()
+  mavenCentral()
+  maven("https://maven.fingerly.io")
+}
+
 android {
   namespace = "io.fingerly.lynx"
   compileSdk = 36
@@ -21,5 +28,5 @@ dependencies {
   implementation("org.lynxsdk.lynx:lynx:4.1.0")
   implementation("org.lynxsdk.lynx:service-api:4.1.0")
   annotationProcessor("org.lynxsdk.lynx:lynx-processor:4.1.0")
-  implementation("io.fingerly:fingerly:0.2.0")
+  implementation("io.fingerly:fingerly:0.3.0")
 }

@@ -25,7 +25,8 @@
     playIntegrityCloudProjectNumber:(double)playIntegrityCloudProjectNumber {
   // `src/index.ts` always sends a consent, `pending` when the app passed none.
   // The native bridge reads anything it does not recognise as `pending`.
-  // The Play Integrity project number is Android only and not read here.
+  // The Play Integrity project number is Android only and ignored on iOS.
+  (void)playIntegrityCloudProjectNumber;
   [FingerlyBridge configureWithApiKey:apiKey endpoint:endpoint platform:platform consent:consent];
 }
 
@@ -71,7 +72,9 @@
 }
 
 - (void)deleteStoredIdentity:(id)success failure:(id)failure {
-  // A keychain delete, synchronous and quick. A refusal carries the
+  // Deletes the local install record and App Attest key state in the app's
+  // Application Support container. Strictly for user-initiated GDPR/privacy
+  // erasure or account deletion (never routine logout). A refusal carries the
   // `delete_failed` code in `userInfo`, which `errorJSON:` passes on.
   //
   // Both are Lynx callback blocks, `void (^)(id result)`, and are called with

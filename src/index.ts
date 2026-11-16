@@ -52,11 +52,11 @@ export interface FingerlyOptions extends MobileFingerlyOptions {
   consent?: ConsentState
   /**
    * Android only: your Google Cloud project number, the one linked to the app
-   * in Play Console, to add Play Integrity verdicts to events (server ADR
-   * 0026). It takes effect only when the app also depends on the optional
-   * `io.fingerly:fingerly-play-integrity` artifact; without it the number is
-   * ignored and nothing fails. Ignored on iOS. Omit it to leave Play
-   * Integrity off.
+   * in Play Console, to add Play Integrity Standard verdicts to v3 events
+   * (server ADR 0026). Used when the app also configures the optional
+   * `io.fingerly:fingerly-play-integrity` provider; without it the number is
+   * ignored and nothing fails. Ignored on iOS. Omit it to leave Play Integrity
+   * off.
    */
   playIntegrityCloudProjectNumber?: number
 }
@@ -67,8 +67,7 @@ export interface IdentifyOptions extends MobileIdentifyOptions {
    * user: on start, on a timer, on returning to the foreground. It joins an
    * identification already in flight instead of starting another, and waits
    * out a transient failure instead of repeating it at once. False when
-   * omitted. On Android it has no effect until the native Android SDK
-   * supports it.
+   * omitted.
    */
   automatic?: boolean
 }
@@ -91,8 +90,7 @@ export class FingerlyError extends Error {
     /**
      * How long the server asked the app to wait, in milliseconds, from its
      * `Retry-After`, when the native SDK gave up on a 429 or 503 that named
-     * one. Undefined when no wait was named, and on Android until the native
-     * Android bridge passes the header on.
+     * one. Undefined when no wait was named.
      */
     readonly retryAfterMs?: number,
   ) {
@@ -312,8 +310,17 @@ const NULLABLE_FIELDS = [
 
 function serverAnswer(parsed: Record<string, unknown>): NativeIdentifyResult {
   const answer = pick(parsed, SERVER_FIELDS)
+  answer.visitorId = typeof answer.visitorId === 'string' ? answer.visitorId : ''
   for (const field of NULLABLE_FIELDS) {
     if (answer[field] === undefined) answer[field] = null
+  }
+  // v3 Option B invariant: unidentifiable checks emit `visitorId: ""` and
+  // `visitorIsNew: false`, and an empty `visitorId` is never marked newly minted.
+  if (answer.identifiable === false) {
+    answer.visitorId = ''
+    answer.visitorIsNew = false
+  } else if (answer.visitorId === '' && answer.visitorIsNew === true) {
+    answer.visitorIsNew = false
   }
   return answer as unknown as NativeIdentifyResult
 }
@@ -347,9 +354,11 @@ export class FingerlyClient {
   }
 
   /**
-   * Collects and submits, and resolves with the server's answer. With
-   * `submit: false` nothing is sent and only the raw report comes back.
-   * Rejects with a `ConsentError` while consent is not `granted`.
+   * Collects and submits on the single-pass `v: 3` wire contract, resolving
+   * with the server's answer (`visitorId` is `""` and `visitorIsNew` is `false`
+   * when `identifiable === false` per Option B). With `submit: false` nothing
+   * is sent and only `{ report }` comes back. Rejects with a `ConsentError`
+   * while consent is not `granted`.
    */
   identify(options: IdentifyOptions & { submit: false }): Promise<RawReportResult>
   identify(options?: IdentifyOptions & { submit?: true }): Promise<NativeIdentifyResult>
@@ -399,11 +408,21 @@ export async function load(options: FingerlyOptions): Promise<FingerlyClient> {
 }
 
 /**
- * Delete the install record the native SDK keeps on the device, for a user's
- * erasure request or account deletion. Needs no `load` and no consent, and
- * sends nothing; resolves once no record remains, including when there was
- * none. The next consented identification starts a new record, so set consent
- * to `'denied'` first to stop identifying as well. Rejects with a
+ * Delete the local install record (`install_id`) and local hardware attestation
+ * key state kept on the device (`Application Support` container + App Attest
+ * key state on iOS; atomic install record + `AndroidKeyStore` signing key on
+ * Android).
+ *
+ * Strictly for user-initiated GDPR / privacy right-to-erasure requests or
+ * account deletion. Do not call this on routine logout, session expiry, or
+ * user switching: repeatedly resetting `install_id` on the same device triggers
+ * single-key `install_id` churn telemetry (`>= 3` distinct IDs in 24 hours).
+ *
+ * Needs no `load` and no consent, and sends nothing; resolves once no local
+ * record or attestation key remains, including when there was none. A later
+ * re-consented identification generates a fresh `install_id` and attests a
+ * fresh key so the server mints an unlinked `visitorId`; set consent to
+ * `'denied'` first to stop identifying altogether. Rejects with a
  * `FingerlyError` when the delete fails or the native SDK predates this call.
  */
 export async function deleteStoredIdentity(): Promise<void> {
@@ -431,11 +450,31 @@ export function nativeVersion(): string | undefined {
 }
 
 export type {
+  Confidence,
+  EngineIdentity,
+  FingerlyEvent,
+  FingerlyEventBase,
+  FingerlyMobileEvent,
+  FingerlyWebEvent,
+  Identification,
+  IdentificationConfidence,
+  IdentifyResult,
+  IdentifySubmission,
+  IdentifyTrigger,
   IntegrityReport,
+  IpGeolocation,
+  IpInfoV4,
   Lie,
+  LieKind,
+  MobileFingerlyOptions,
+  MobileIdentifyOptions,
   NativeIdentifyResult,
+  RiskSignal,
   SdkPlatform,
   SignalOutcome,
   SignalReport,
   SignalStatus,
+  SuspectLevel,
+  Velocity,
+  VelocityWindow,
 } from '@fingerly/types'

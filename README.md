@@ -20,9 +20,9 @@ The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide
   `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run
   `pod install`, then rebuild.
 
-The Android module depends on `io.fingerly:fingerly:0.2.0` from Fingerly's Maven
-repository and declares no repositories of its own, so Android hosts add it to
-the repositories in `settings.gradle`:
+The Android module depends on `io.fingerly:fingerly:0.3.0` from Fingerly's Maven
+repository (`mavenLocal()` is also configured for local artifact staging). Android
+hosts add Fingerly's repository in `settings.gradle`:
 
 ```groovy
 maven { url 'https://maven.fingerly.io' }
@@ -56,14 +56,14 @@ then both fields are `null`, exactly as on a check nobody scored: an app cannot
 tell which it was, so read `null` as "no answer here", never as clean. The
 signals behind a score never reach the device; read them on your backend,
 through the server-side event read by `requestId` or webhooks, or in the
-dashboard. `visitorConfidence`, `visitorIsNew`,
+dashboard. When `identifiable` is `false` (v3 Option B), `visitorId` is `""` and
+`visitorIsNew` is `false`. `visitorConfidence`, `visitorIsNew`,
 `identifiable` and `duplicate` can be `null` when the server did not say, which
 is not the same as `0` or `false`. Pass `{ submit: false }` to collect without
 sending; it resolves with `{ report }`, the raw report and nothing else. Pass `{ automatic: true }` for
 a call your app makes on its own (on start, on a timer, on returning to the
 foreground): it joins an identification already in flight instead of starting
-another, and waits out a transient failure instead of repeating it. On Android
-it has no effect until the native Android SDK supports it. `collect()` returns
+another, and waits out a transient failure instead of repeating it. `collect()` returns
 the native signal report without submitting it.
 
 ```ts
@@ -74,8 +74,7 @@ const version = nativeVersion()
 Failures are surfaced as `FingerlyError`. `status` is populated only for a
 positive HTTP status returned by the native transport. When the server asked
 for a pause with `Retry-After`, `retryAfterMs` carries it: wait at least that
-long before identifying again. It is undefined when no wait was named, and on
-Android until the native Android bridge passes the header on.
+long before identifying again. It is undefined when no wait was named.
 
 ## Consent
 
@@ -139,13 +138,19 @@ import { deleteStoredIdentity } from '@fingerly/lynx'
 await deleteStoredIdentity()
 ```
 
-Deletes the install record the native SDK keeps on the device, including the
-install ID the server recognises it by. Call it when a user asks for their data
-to be erased or deletes their account. It needs no `load` and no consent,
-sends nothing, and resolves once no record remains, including when there was
-none. It rejects with a `FingerlyError` when the delete fails. The next
-identification made with consent starts a new record; to stop identifying as
-well, set consent to `'denied'` first.
+Deletes the local install record (`install_id`) and local hardware attestation
+key state kept on the device (`Application Support` container + App Attest key
+state on iOS; atomic install record + `AndroidKeyStore` signing key on Android).
+This call is **strictly for user-initiated GDPR / privacy right-to-erasure
+requests or account deletion** — never call it on routine logout, session
+expiry, or user switching, as repeated `install_id` resets on the same device
+trigger single-key churn telemetry (`>= 3` distinct IDs in 24 hours). It needs
+no `load` and no consent, sends nothing, and resolves once no local record or
+key state remains, including when there was none. It rejects with a
+`FingerlyError` when the delete fails. A subsequent re-consented identification
+generates a fresh `install_id` and attests a fresh key so the server mints an
+unlinked `visitorId`; to stop identifying altogether, set consent to `'denied'`
+first.
 
 ## Why there is no JavaScript fallback
 
