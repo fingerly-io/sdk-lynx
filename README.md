@@ -1,15 +1,16 @@
 # @fingerly/lynx
 
-The Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and
-Android SDKs; all collection, transport and scoring stays native.
+The Fingerly SDK for Lynx (`0.3.0`, `v: 3`). It is a thin Native Module over the
+Fingerly iOS and Android SDKs; all collection, transport and attestation stay
+native.
 
-Lynx 4.1 and iOS/Android are supported in this first release. HarmonyOS, Web,
-Lynxtron and per-`LynxView` registration are not supported.
+Lynx 4.1 on iOS and Android is supported. HarmonyOS, Web, Lynxtron and
+per-`LynxView` registration are not supported.
 
 ## Install
 
 ```sh
-pnpm add @fingerly/lynx
+pnpm add @fingerly/lynx@^0.3.0
 ```
 
 The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide/autolink):
@@ -28,8 +29,8 @@ hosts add Fingerly's repository in `settings.gradle`:
 maven { url 'https://maven.fingerly.io' }
 ```
 
-This bridge is licensed under Apache-2.0. The native SDK it depends on is a
-closed binary under the Fingerly SDK License.
+This bridge is licensed under Apache-2.0. The native SDKs it depends on are
+closed binaries under the Fingerly SDK License.
 
 The package's `lynx.lib.json` registers the `Fingerly` Native Module. Native
 Modules are available from Lynx background-thread scripting, so call the SDK
@@ -48,25 +49,35 @@ const result = await fingerly.identify({ tag: 'checkout' })
 ```
 
 `load` reports `lynx-ios` or `lynx-android`, allowing the server to select the
-correct native risk profile. `identify()` defaults to submission and resolves
-with what the server said: `requestId`, `visitorId` and, by default,
-`suspectScore` and `suspectLevel`. The score is a convenience for showing a
-result straight away. Each SDK key has a setting that hides it from apps, and
-then both fields are `null`, exactly as on a check nobody scored: an app cannot
-tell which it was, so read `null` as "no answer here", never as clean. The
-signals behind a score never reach the device; read them on your backend,
-through the server-side event read by `requestId` or webhooks, or in the
-dashboard. When `identifiable` is `false` (v3 Option B), `visitorId` is `""` and
-`visitorIsNew` is `false`. `visitorConfidence`, `visitorIsNew`,
-`identifiable` and `duplicate` can be `null` when the server did not say, which
-is not the same as `0` or `false`. Pass `{ submit: false }` to collect without
-sending; it resolves with `{ report }`, the raw report and nothing else. Pass `{ automatic: true }` for
-a call your app makes on its own (on start, on a timer, on returning to the
+correct native risk profile. For production Android keys, configure
+`AllowedAndroidSigners` (64-hex SHA-256 signing certificate digests) alongside
+`AllowedAndroidPackages` in the dashboard.
+
+`identify()` submits a single-pass `v: 3` identification (`1-RTT` steady-state
+via cached `next_attestation` challenge offers) and resolves with what the
+server said: `requestId`, `visitorId` and, by default, `suspectScore` and
+`suspectLevel`. The score is a convenience for showing a result straight away.
+Each SDK key has a setting that hides it from apps, and then both fields are
+`null`, exactly as on a check nobody scored: an app cannot tell which it was, so
+read `null` as "no answer here", never as clean. The signals behind a score
+never reach the device; read them on your backend, through the server-side event
+read by `requestId` or webhooks, or in the dashboard.
+
+When `identifiable` is `false` (v3 **Option B**), `visitorId` is `""` and
+`visitorIsNew` is `false`. `visitorConfidence`, `visitorIsNew`, `identifiable`
+and `duplicate` can be `null` when the server did not say, which is not the same
+as `0` or `false`.
+
+Pass `{ submit: false }` to collect without sending; it resolves with
+`{ report }`, the raw report and nothing else. Pass `{ automatic: true }` for a
+call your app makes on its own (on start, on a timer, on returning to the
 foreground): it joins an identification already in flight instead of starting
-another, and waits out a transient failure instead of repeating it. `collect()` returns
-the native signal report without submitting it.
+another, and waits out a transient failure instead of repeating it. `collect()`
+returns the native `SignalReport` without submitting it:
 
 ```ts
+import { nativeVersion } from '@fingerly/lynx'
+
 const report = await fingerly.collect()
 const version = nativeVersion()
 ```
@@ -104,10 +115,10 @@ identifies nobody. Pass `consent: 'granted'` to `load` only when you already
 have consent, or another lawful basis. Anything other than the three states
 throws a `TypeError`.
 
-Until consent is `'granted'`, the native SDK runs no source, touches no storage
-for fingerprinting and sends nothing. `identify()` and `collect()` reject with
-`ConsentError`, a subclass of `FingerlyError` with `code: 'consent_required'`
-and the refusing `state`:
+Until consent is `'granted'`, the native SDK runs no source, touches no
+container storage or attestation key state, and sends nothing. `identify()` and
+`collect()` reject with `ConsentError`, a subclass of `FingerlyError` with
+`code: 'consent_required'` and the refusing `state`:
 
 ```ts
 try {
@@ -125,12 +136,11 @@ Loading collects and sends nothing, whatever the state. The native SDK holds one
 state for the whole app, and each `load` sets it to the `consent` passed (or
 `'pending'`), so pass `consent` on every `load`.
 
-Every submission the native SDK sends carries the state it was collected under,
-`"consent": "granted"`, and the server refuses any other value with
-`422 consent_required`. The native SDK only sends while consent is granted, so
-that refusal should never be seen.
+Every submission the native SDK sends carries `"consent": "granted"`, and the
+server refuses any other value with `422 consent_required`. The native SDK only
+sends while consent is granted, so that refusal should never be seen.
 
-## Erasure
+## Erasure (GDPR / privacy right to erasure only)
 
 ```ts
 import { deleteStoredIdentity } from '@fingerly/lynx'
@@ -139,83 +149,98 @@ await deleteStoredIdentity()
 ```
 
 Deletes the local install record (`install_id`) and local hardware attestation
-key state kept on the device (`Application Support` container + App Attest key
-state on iOS; atomic install record + `AndroidKeyStore` signing key on Android).
-This call is **strictly for user-initiated GDPR / privacy right-to-erasure
-requests or account deletion** — never call it on routine logout, session
-expiry, or user switching, as repeated `install_id` resets on the same device
-trigger single-key churn telemetry (`>= 3` distinct IDs in 24 hours). It needs
-no `load` and no consent, sends nothing, and resolves once no local record or
-key state remains, including when there was none. It rejects with a
-`FingerlyError` when the delete fails. A subsequent re-consented identification
-generates a fresh `install_id` and attests a fresh key so the server mints an
-unlinked `visitorId`; to stop identifying altogether, set consent to `'denied'`
-first.
+key state kept on the device (`Application Support/io.fingerly.sdk/` container
+files with `isExcludedFromBackup = true` and App Attest key state on iOS; atomic
+install record + persistent `AndroidKeyStore` v3 signing key
+`io.fingerly.sdk.attest.v3` on Android). This call is **strictly for
+user-initiated GDPR / privacy right-to-erasure requests or account deletion** —
+never call it on routine logout, session expiry, or user switching, as repeated
+`install_id` resets on the same device trigger single-key churn telemetry
+(`>= 3` distinct IDs in 24 hours). It needs no `load` and no consent, sends
+nothing, and resolves once no local record or key state remains, including when
+there was none. It rejects with a `FingerlyError` when the delete fails. A
+subsequent re-consented identification generates a fresh `install_id` and
+attests a fresh key so the server mints an unlinked `visitorId`; to stop
+identifying altogether, set consent to `'denied'` first.
 
 ## Why there is no JavaScript fallback
 
-JavaScript cannot inspect the filesystem, loaded images, debugger flags,
-DeviceCheck, Android packages, or the native TLS connection. Falling back to a
-partial report could mark a compromised device as clean, so a missing Native
-Module is an actionable integration error.
+JavaScript cannot inspect the filesystem, loaded Mach-O or ELF images, debugger
+flags, App Attest / Keystore hardware attestation, Android packages, or the
+native TLS connection. Falling back to a partial report could mark a compromised
+device as clean, so a missing Native Module is an actionable integration error.
 
-## Native SDK dependencies
+## Native SDK dependencies (`0.3.0`)
 
-On iOS, `pod install` downloads the matching `Fingerly.xcframework` from
-`https://maven.fingerly.io/ios/` and verifies its checksum, so the Podfile needs
-no entry for the native SDK. The same binary is published as a Swift package at
-[sdk-ios](https://github.com/fingerly-io/sdk-ios).
+On iOS, `pod install` downloads the matching `Fingerly.xcframework` (`0.3.0`)
+from `https://maven.fingerly.io/ios/` and verifies its SHA-256 checksum, so the
+Podfile needs no separate entry for the native SDK. The same binary is published
+as a Swift package at [sdk-ios](https://github.com/fingerly-io/sdk-ios).
 
-On Android, the module resolves `io.fingerly:fingerly` from
+On Android, the module resolves `io.fingerly:fingerly:0.3.0` from
 `https://maven.fingerly.io`, added to the host's repositories as shown above.
 
-**Installed-app checks are opt-in on Android.** From the Android SDK release
-after 0.1.0, the checks for root managers, hooking frameworks and app cloners by
-package name ship in a separate artifact, `io.fingerly:fingerly-app-checks`,
-because Google Play treats the list of installed apps as personal and sensitive
-data. This bridge depends on `io.fingerly:fingerly` only. If your app can
-justify the package visibility in its Play review and wants these checks, add
-the artifact to your app's Android module, at the same version as
-`io.fingerly:fingerly`, and declare "App activity: Installed apps" in the Data
-safety form:
+**Installed-app checks are opt-in on Android (`io.fingerly:fingerly-app-checks:0.3.0`).**
+Core `io.fingerly:fingerly:0.3.0` declares zero `<queries>` entries in its
+manifest because Google Play treats installed-app visibility as personal and
+sensitive data. If your app justifies package visibility for the 17 root
+managers, hooking frameworks and dual-space cloners in Play review, add
+`io.fingerly:fingerly-app-checks:0.3.0` to your Android app module, register
+`FingerlyBridge.setAppChecks(FingerlyAppChecks())` in your host `Application` or
+`Activity`, and declare "App activity: Installed apps" in the Data safety form:
 
 ```kotlin
+// the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-app-checks:<same version as io.fingerly:fingerly>")
+    implementation("io.fingerly:fingerly-app-checks:0.3.0")
 }
+```
+
+```kotlin
+// Android Application or Activity startup
+import io.fingerly.sdk.appchecks.FingerlyAppChecks
+import io.fingerly.sdk.bridge.FingerlyBridge
+
+FingerlyBridge.setAppChecks(FingerlyAppChecks())
 ```
 
 Without it, the report carries no installed-app fields and nothing about other
 apps leaves the device; whether the app itself runs inside a cloner is still
 reported.
 
-**Play Integrity (Android, optional).** The Android SDK has an optional
-artifact, `io.fingerly:fingerly-play-integrity` (server ADR 0026), that adds
-Google Play Integrity verdicts to events. To use it, add the artifact to the
-app and pass your Google Cloud project number, the one linked to the app in
-Play Console, to `load`:
+**Play Integrity (Android, optional — `io.fingerly:fingerly-play-integrity:0.3.0`).**
+To add Google Play Integrity Standard tokens bound to the `v: 3`
+`statementDigest` (ADR 0026), add `io.fingerly:fingerly-play-integrity:0.3.0` to
+your Android app module, register
+`FingerlyBridge.setPlayIntegrity(FingerlyPlayIntegrity())` in your Android host,
+and pass your Google Cloud project number (the one linked in Play Console) to
+`load`:
 
 ```kotlin
 // the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-play-integrity:<same version as io.fingerly:fingerly>")
+    implementation("io.fingerly:fingerly-play-integrity:0.3.0")
 }
+```
+
+```kotlin
+// Android Application or Activity startup
+import io.fingerly.sdk.bridge.FingerlyBridge
+import io.fingerly.sdk.playintegrity.FingerlyPlayIntegrity
+
+FingerlyBridge.setPlayIntegrity(FingerlyPlayIntegrity())
 ```
 
 ```ts
 const fingerly = await load({
   apiKey: 'fly_pk_production_…',
+  consent: 'granted',
   playIntegrityCloudProjectNumber: 123456789012,
 })
 ```
 
-The native SDK finds the artifact on its own; this bridge does not depend on
-it. Without the artifact the number is ignored and nothing fails, and on iOS it
-is ignored. The rest of the setup (the service account uploaded to your
-Fingerly project, the daily budget) is in the Android SDK's
-`fingerly-play-integrity/README.md`. This needs the Android SDK
-release after 0.1.0, the first whose `FingerlyBridge.configure` takes a project
-number; Gradle refuses to pair the artifact with a core of another version.
+Without the provider the project number is ignored and nothing fails, and on iOS
+it is safely ignored.
 
 ## Development
 
