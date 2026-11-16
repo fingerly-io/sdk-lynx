@@ -126,7 +126,7 @@ describe('0.3.0 version and v3 contract parity', () => {
     ) as { version: string }
     const iosBinary = JSON.parse(
       readFileSync(new URL('../ios/fingerly-binary.json', import.meta.url), 'utf8'),
-    ) as { version: string; url: string; sha256: string }
+    ) as { version: string; url: string; sha256: string; team_id: string }
     const androidGradle = readFileSync(
       new URL('../android/build.gradle.kts', import.meta.url),
       'utf8',
@@ -139,6 +139,7 @@ describe('0.3.0 version and v3 contract parity', () => {
     expect(iosBinary.sha256).toBe(
       'c1d582eae15243fb63e3e55e68909490060f2b8232624b1025bb931c3100b4cc',
     )
+    expect(iosBinary.team_id).toBe('XGXX88HRR5')
     expect(androidGradle).toContain('mavenLocal()')
     expect(androidGradle).toContain('implementation("io.fingerly:fingerly:0.3.0")')
   })
