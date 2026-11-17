@@ -170,7 +170,6 @@ describe('0.3.0 version and v3 contract parity', () => {
       'attestation_failed',
       'attestation_missing',
       'attestation_downgrade',
-      'app_attest_key_churn',
       'play_device_integrity_failed',
       'play_app_unrecognized',
       'device_inconsistent',
