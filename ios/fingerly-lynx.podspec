@@ -21,7 +21,7 @@ end
 
 Pod::Spec.new do |s|
   s.name = 'fingerly-lynx'
-  s.version = package['version'] || '0.3.0'
+  s.version = package['version'] || '0.4.0'
   s.summary = 'Fingerly native bridge for Lynx'
   s.homepage = 'https://fingerly.io'
   s.license = { :type => 'Apache-2.0', :file => '../LICENSE' }
