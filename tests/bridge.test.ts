@@ -121,8 +121,10 @@ describe('0.3.0 version and v3 contract parity', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
       version: string
     }
+    // The @fingerly/types this package resolves: packages/types in this
+    // repository, client/web/types when it builds inside the sdks workspace.
     const typesPkg = JSON.parse(
-      readFileSync(new URL('../packages/types/package.json', import.meta.url), 'utf8'),
+      readFileSync(new URL('../node_modules/@fingerly/types/package.json', import.meta.url), 'utf8'),
     ) as { version: string }
     const iosBinary = JSON.parse(
       readFileSync(new URL('../ios/fingerly-binary.json', import.meta.url), 'utf8'),
