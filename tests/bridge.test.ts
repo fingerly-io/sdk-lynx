@@ -137,7 +137,7 @@ describe('0.3.0 version and v3 contract parity', () => {
     expect(iosBinary.version).toBe('0.3.0')
     expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.3.0.xcframework.zip')
     expect(iosBinary.sha256).toBe(
-      'c1d582eae15243fb63e3e55e68909490060f2b8232624b1025bb931c3100b4cc',
+      'b3288cc4539b6c5b8bae226854a586473b2457489e69b2ac1f26e9f84f6add27',
     )
     expect(iosBinary.team_id).toBe('XGXX88HRR5')
     expect(androidGradle).toContain('mavenLocal()')
