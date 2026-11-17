@@ -39,10 +39,10 @@ Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron 
 3. **Identify.** Native Modules are available from Lynx background-thread scripting, so call the SDK from an event handler, effect, or other background function.
 
    ```ts
-   import { load } from '@fingerly/lynx'
+   import { ConsentState, load } from '@fingerly/lynx'
 
    // consent: only once you have consent (or another lawful basis)
-   const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: 'granted' })
+   const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: ConsentState.Granted })
    const result = await fingerly.identify({ tag: 'checkout' })
 
    // Send result.requestId to your backend and make the decision there.
@@ -52,6 +52,7 @@ Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron 
 
 - [Platform setup](#platform-setup)
 - [Identify](#identify)
+- [Named values](#named-values)
 - [Consent](#consent)
 - [Erasure](#erasure)
 - [Why there is no JavaScript fallback](#why-there-is-no-javascript-fallback)
@@ -78,7 +79,7 @@ maven { url 'https://maven.fingerly.io' }
 
 ## Identify
 
-`load` reports `lynx-ios` or `lynx-android`, so the server selects the correct native risk profile and applies the right mobile checks. On any other platform it throws a `FingerlyError`. For production Android keys, configure `AllowedAndroidSigners` (64-hex SHA-256 signing certificate digests) alongside `AllowedAndroidPackages` in the dashboard.
+`load` reports `lynx-ios` or `lynx-android` (`SdkPlatform.LynxIos`, `SdkPlatform.LynxAndroid`), so the server selects the correct native risk profile and applies the right mobile checks. On any other platform it throws a `FingerlyError`. For production Android keys, configure `AllowedAndroidSigners` (64-hex SHA-256 signing certificate digests) alongside `AllowedAndroidPackages` in the dashboard.
 
 `identify()` submits a single-pass `v: 3` identification (`1-RTT` steady state through cached `next_attestation` challenge offers) and resolves with what the server said: `requestId`, `visitorId` and, by default, `suspectScore` and `suspectLevel`.
 
@@ -106,19 +107,47 @@ const version = nativeVersion()
 
 Failures are surfaced as `FingerlyError`. `status` is populated only for a positive HTTP status returned by the native transport. When the server asked for a pause with `Retry-After`, `retryAfterMs` carries it: wait at least that long before identifying again. It is undefined when no wait was named.
 
+## Named values
+
+The fixed strings the API returns and the module accepts have names, the same objects `@fingerly/web-js` exports. Each is an `as const` object with a same-named type, and a member is its value in PascalCase, word by word (`SuspectLevel.High` is `'high'`, `Signal.FingerprintSuppressed` is `'fingerprint_suppressed'`):
+
+```ts
+import { EventState, SuspectLevel } from '@fingerly/lynx'
+
+const result = await fingerly.identify({ tag: 'checkout' })
+
+if (result.state === EventState.Unavailable) {
+  // The network lookup could not run, so the check was not scored.
+}
+if (result.suspectLevel === SuspectLevel.High) {
+  // Show a step-up screen while your backend makes the decision.
+}
+```
+
+| Constant | Members | Where it appears |
+| --- | --- | --- |
+| `SuspectLevel` | `Low`, `Medium`, `High` | `suspectLevel` on the `identify()` answer. |
+| `EventState` | `Enriched`, `Unavailable`, `Pending` | `state` on the `identify()` answer. An answer is never `Pending`, which only a server-side event read reports. |
+| `ConsentState` | `Granted`, `Pending`, `Denied` | The `consent` option on `load`, `setConsent`, `consent` and `ConsentError.state`. |
+| `SdkPlatform` | `LynxIos`, `LynxAndroid`, and the other SDKs' platforms | What the module reports itself as, and the SDK named on the event your backend reads. |
+| `Signal` | Every signal group and detector the server reports, such as `Signal.Jailbreak` and `Signal.VpnPublic` | Triggers on the event your backend reads and in webhooks. The signals never reach the device. |
+| `Confidence` | `Low`, `Medium`, `High` | A trigger's `confidence` on the event your backend reads. |
+
+Comparing with the plain string compiles as well. The module hands on the server's values as they came, so a value a newer server adds reaches the app unchanged rather than being dropped.
+
 ## Consent
 
 The SDK identifies nobody until it is told consent is `'granted'`. The usual pattern is to load it at launch with the default `'pending'` and pass on the answer from your consent tool when it arrives:
 
 ```ts
-import { ConsentError, load } from '@fingerly/lynx'
+import { ConsentError, ConsentState, load } from '@fingerly/lynx'
 
 const fingerly = await load({ apiKey: 'fly_pk_production_…' }) // consent is 'pending'
 
 // From your consent tool's callback:
-fingerly.setConsent(accepted ? 'granted' : 'denied')
+fingerly.setConsent(accepted ? ConsentState.Granted : ConsentState.Denied)
 
-fingerly.consent // 'granted', 'pending' or 'denied'
+fingerly.consent // ConsentState.Granted, ConsentState.Pending or ConsentState.Denied
 ```
 
 | Option / method | What it does |
@@ -127,7 +156,7 @@ fingerly.consent // 'granted', 'pending' or 'denied'
 | `setConsent(state)` | Records the decision. Synchronous and safe to call repeatedly. |
 | `consent` | The state last given to the native SDK, read-only. |
 
-The default is `'pending'`, so an integration that never mentions consent identifies nobody. Pass `consent: 'granted'` to `load` only when you already have consent, or another lawful basis. Anything other than the three states throws a `TypeError`.
+The default is `'pending'`, so an integration that never mentions consent identifies nobody. Pass `consent: ConsentState.Granted` to `load` only when you already have consent, or another lawful basis. Anything other than the three states throws a `TypeError`.
 
 Until consent is `'granted'`, the native SDK runs no source, touches no container storage or attestation key state, and sends nothing. `identify()` and `collect()` reject with `ConsentError`, a subclass of `FingerlyError` with `code: 'consent_required'` and the refusing `state`:
 
@@ -136,7 +165,7 @@ try {
   await fingerly.identify()
 } catch (error) {
   if (error instanceof ConsentError) {
-    // error.state is 'pending' or 'denied'; nothing was collected or sent
+    // error.state is ConsentState.Pending or ConsentState.Denied; nothing was collected or sent
   }
 }
 ```
@@ -207,7 +236,7 @@ dependencies {
 ```ts
 const fingerly = await load({
   apiKey: 'fly_pk_production_…',
-  consent: 'granted',
+  consent: ConsentState.Granted,
   playIntegrityCloudProjectNumber: 123456789012,
 })
 ```

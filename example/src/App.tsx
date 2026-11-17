@@ -1,11 +1,11 @@
 'background only'
 
 import { useState } from '@lynx-js/react'
-import { load, nativeVersion } from '@fingerly/lynx'
+import { ConsentState, load, nativeVersion } from '@fingerly/lynx'
 
 // The example's own developer has agreed. A real app loads with the default
-// 'pending' and calls setConsent('granted') once its consent tool says yes.
-const options = { apiKey: 'fly_pk_development_replace_me', consent: 'granted' } as const
+// pending and calls setConsent(ConsentState.Granted) once its consent tool says yes.
+const options = { apiKey: 'fly_pk_development_replace_me', consent: ConsentState.Granted } as const
 
 export function App() {
   const [output, setOutput] = useState('Ready')
