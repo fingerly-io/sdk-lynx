@@ -21,7 +21,7 @@
 
 ## What is this
 
-`@fingerly/lynx` (`0.3.0`, `v: 3`) is the Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and Android SDKs; all collection, transport and attestation stay native. You call `identify()` from Lynx background-thread scripting and get back a request ID and a visitor ID to send to your own backend, which decides what to do. [Fingerly](https://fingerly.io) is a device intelligence API that helps you protect signups, logins and payments from fraud and abuse.
+`@fingerly/lynx` (`0.4.0`, `v: 3`) is the Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and Android SDKs; all collection, transport and attestation stay native. You call `identify()` from Lynx background-thread scripting and get back a request ID and a visitor ID to send to your own backend, which decides what to do. [Fingerly](https://fingerly.io) is a device intelligence API that helps you protect signups, logins and payments from fraud and abuse.
 
 Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron and per-`LynxView` registration.
 
@@ -31,7 +31,7 @@ Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron 
 2. **Install the package.**
 
    ```sh
-   pnpm add @fingerly/lynx@^0.3.0
+   pnpm add @fingerly/lynx@^0.4.0
    ```
 
    The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide/autolink). See [Platform setup](#platform-setup) for the Android and iOS steps.
@@ -39,10 +39,10 @@ Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron 
 3. **Identify.** Native Modules are available from Lynx background-thread scripting, so call the SDK from an event handler, effect, or other background function.
 
    ```ts
-   import { load } from '@fingerly/lynx'
+   import { ConsentState, load } from '@fingerly/lynx'
 
    // consent: only once you have consent (or another lawful basis)
-   const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: 'granted' })
+   const fingerly = await load({ apiKey: 'fly_pk_production_…', consent: ConsentState.Granted })
    const result = await fingerly.identify({ tag: 'checkout' })
 
    // Send result.requestId to your backend and make the decision there.
@@ -52,6 +52,7 @@ Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron 
 
 - [Platform setup](#platform-setup)
 - [Identify](#identify)
+- [Named values](#named-values)
 - [Consent](#consent)
 - [Erasure](#erasure)
 - [Why there is no JavaScript fallback](#why-there-is-no-javascript-fallback)
@@ -70,7 +71,7 @@ The package's `lynx.lib.json` registers the `Fingerly` Native Module. The host a
 | --- | --- |
 | Apply `org.lynxsdk.library-settings` in `settings.gradle` and `org.lynxsdk.library-build` in the app module, then sync and rebuild. | Install `cocoapods-lynx-library`, add `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run `pod install`, then rebuild. |
 
-The Android module depends on `io.fingerly:fingerly:0.3.0` from Fingerly's Maven repository (`mavenLocal()` is also configured, for local artifact staging). Android hosts add Fingerly's repository to the repositories in `settings.gradle`:
+The Android module depends on `io.fingerly:fingerly:0.4.0` from Fingerly's Maven repository (`mavenLocal()` is also configured, for local artifact staging). Android hosts add Fingerly's repository to the repositories in `settings.gradle`:
 
 ```groovy
 maven { url 'https://maven.fingerly.io' }
@@ -78,7 +79,7 @@ maven { url 'https://maven.fingerly.io' }
 
 ## Identify
 
-`load` reports `lynx-ios` or `lynx-android`, so the server selects the correct native risk profile and applies the right mobile checks. On any other platform it throws a `FingerlyError`. For production Android keys, configure `AllowedAndroidSigners` (64-hex SHA-256 signing certificate digests) alongside `AllowedAndroidPackages` in the dashboard.
+`load` reports `lynx-ios` or `lynx-android` (`SdkPlatform.LynxIos`, `SdkPlatform.LynxAndroid`), so the server selects the correct native risk profile and applies the right mobile checks. On any other platform it throws a `FingerlyError`. For production Android keys, configure `AllowedAndroidSigners` (64-hex SHA-256 signing certificate digests) alongside `AllowedAndroidPackages` in the dashboard.
 
 `identify()` submits a single-pass `v: 3` identification (`1-RTT` steady state through cached `next_attestation` challenge offers) and resolves with what the server said: `requestId`, `visitorId` and, by default, `suspectScore` and `suspectLevel`.
 
@@ -106,19 +107,47 @@ const version = nativeVersion()
 
 Failures are surfaced as `FingerlyError`. `status` is populated only for a positive HTTP status returned by the native transport. When the server asked for a pause with `Retry-After`, `retryAfterMs` carries it: wait at least that long before identifying again. It is undefined when no wait was named.
 
+## Named values
+
+The fixed strings the API returns and the module accepts have names, the same objects `@fingerly/web-js` exports. Each is an `as const` object with a same-named type, and a member is its value in PascalCase, word by word (`SuspectLevel.High` is `'high'`, `Signal.FingerprintSuppressed` is `'fingerprint_suppressed'`):
+
+```ts
+import { EventState, SuspectLevel } from '@fingerly/lynx'
+
+const result = await fingerly.identify({ tag: 'checkout' })
+
+if (result.state === EventState.Unavailable) {
+  // The network lookup could not run, so the check was not scored.
+}
+if (result.suspectLevel === SuspectLevel.High) {
+  // Show a step-up screen while your backend makes the decision.
+}
+```
+
+| Constant | Members | Where it appears |
+| --- | --- | --- |
+| `SuspectLevel` | `Low`, `Medium`, `High` | `suspectLevel` on the `identify()` answer. |
+| `EventState` | `Enriched`, `Unavailable`, `Pending` | `state` on the `identify()` answer. An answer is never `Pending`, which only a server-side event read reports. |
+| `ConsentState` | `Granted`, `Pending`, `Denied` | The `consent` option on `load`, `setConsent`, `consent` and `ConsentError.state`. |
+| `SdkPlatform` | `LynxIos`, `LynxAndroid`, and the other SDKs' platforms | What the module reports itself as, and the SDK named on the event your backend reads. |
+| `Signal` | Every signal group and detector the server reports, such as `Signal.Jailbreak` and `Signal.VpnPublic` | Triggers on the event your backend reads and in webhooks. The signals never reach the device. |
+| `Confidence` | `Low`, `Medium`, `High` | A trigger's `confidence` on the event your backend reads. |
+
+Comparing with the plain string compiles as well. The module hands on the server's values as they came, so a value a newer server adds reaches the app unchanged rather than being dropped.
+
 ## Consent
 
 The SDK identifies nobody until it is told consent is `'granted'`. The usual pattern is to load it at launch with the default `'pending'` and pass on the answer from your consent tool when it arrives:
 
 ```ts
-import { ConsentError, load } from '@fingerly/lynx'
+import { ConsentError, ConsentState, load } from '@fingerly/lynx'
 
 const fingerly = await load({ apiKey: 'fly_pk_production_…' }) // consent is 'pending'
 
 // From your consent tool's callback:
-fingerly.setConsent(accepted ? 'granted' : 'denied')
+fingerly.setConsent(accepted ? ConsentState.Granted : ConsentState.Denied)
 
-fingerly.consent // 'granted', 'pending' or 'denied'
+fingerly.consent // ConsentState.Granted, ConsentState.Pending or ConsentState.Denied
 ```
 
 | Option / method | What it does |
@@ -127,7 +156,7 @@ fingerly.consent // 'granted', 'pending' or 'denied'
 | `setConsent(state)` | Records the decision. Synchronous and safe to call repeatedly. |
 | `consent` | The state last given to the native SDK, read-only. |
 
-The default is `'pending'`, so an integration that never mentions consent identifies nobody. Pass `consent: 'granted'` to `load` only when you already have consent, or another lawful basis. Anything other than the three states throws a `TypeError`.
+The default is `'pending'`, so an integration that never mentions consent identifies nobody. Pass `consent: ConsentState.Granted` to `load` only when you already have consent, or another lawful basis. Anything other than the three states throws a `TypeError`.
 
 Until consent is `'granted'`, the native SDK runs no source, touches no container storage or attestation key state, and sends nothing. `identify()` and `collect()` reject with `ConsentError`, a subclass of `FingerlyError` with `code: 'consent_required'` and the refusing `state`:
 
@@ -136,7 +165,7 @@ try {
   await fingerly.identify()
 } catch (error) {
   if (error instanceof ConsentError) {
-    // error.state is 'pending' or 'denied'; nothing was collected or sent
+    // error.state is ConsentState.Pending or ConsentState.Denied; nothing was collected or sent
   }
 }
 ```
@@ -168,12 +197,12 @@ JavaScript cannot inspect the filesystem, loaded Mach-O or ELF images, debugger 
 
 ## Native SDK dependencies
 
-Both native dependencies are at `0.3.0`.
+Both native dependencies are at `0.4.0`.
 
 <details>
 <summary><b>iOS</b></summary>
 
-`pod install` downloads the matching `Fingerly.xcframework` (`0.3.0`) from `https://maven.fingerly.io/ios/` and verifies its SHA-256 checksum, so the Podfile needs no separate entry for the native SDK. The same binary is published as a Swift package at [sdk-ios](https://github.com/fingerly-io/sdk-ios).
+`pod install` downloads the matching `Fingerly.xcframework` (`0.4.0`) from `https://maven.fingerly.io/ios/` and verifies its SHA-256 checksum, so the Podfile needs no separate entry for the native SDK. The same binary is published as a Swift package at [sdk-ios](https://github.com/fingerly-io/sdk-ios).
 
 The Play Integrity project number passed to `load` is ignored on iOS.
 
@@ -182,32 +211,32 @@ The Play Integrity project number passed to `load` is ignored on iOS.
 <details>
 <summary><b>Android</b></summary>
 
-The module resolves `io.fingerly:fingerly:0.3.0` from `https://maven.fingerly.io`, added to the host's repositories as shown in [Platform setup](#platform-setup).
+The module resolves `io.fingerly:fingerly:0.4.0` from `https://maven.fingerly.io`, added to the host's repositories as shown in [Platform setup](#platform-setup).
 
-**Installed-app checks are opt-in (`io.fingerly:fingerly-app-checks:0.3.0`).** Core `io.fingerly:fingerly:0.3.0` declares zero `<queries>` entries in its manifest, because Google Play treats installed-app visibility as personal and sensitive data. If your app can justify package visibility for the 17 root managers, hooking frameworks and dual-space cloners in its Play review, add `io.fingerly:fingerly-app-checks:0.3.0` to your app's Android module and declare "App activity: Installed apps" in the Data safety form. The module finds the artifact and registers its provider on every `load`, so there is no native code to write:
+**Installed-app checks are opt-in (`io.fingerly:fingerly-app-checks:0.4.0`).** Core `io.fingerly:fingerly:0.4.0` declares zero `<queries>` entries in its manifest, because Google Play treats installed-app visibility as personal and sensitive data. If your app can justify package visibility for the 17 root managers, hooking frameworks and dual-space cloners in its Play review, add `io.fingerly:fingerly-app-checks:0.4.0` to your app's Android module and declare "App activity: Installed apps" in the Data safety form. The module finds the artifact and registers its provider on every `load`, so there is no native code to write:
 
 ```kotlin
 // the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-app-checks:0.3.0")
+    implementation("io.fingerly:fingerly-app-checks:0.4.0")
 }
 ```
 
 Without it, the report carries no installed-app fields and nothing about other apps leaves the device; whether the app itself runs inside a cloner is still reported.
 
-**Play Integrity (optional, `io.fingerly:fingerly-play-integrity:0.3.0`).** To add Google Play Integrity Standard tokens bound to the `v: 3` `statementDigest`, add the artifact to your app's Android module and pass your Google Cloud project number, the one linked to the app in Play Console, to `load`. The module finds the artifact and registers its provider with that project number:
+**Play Integrity (optional, `io.fingerly:fingerly-play-integrity:0.4.0`).** To add Google Play Integrity Standard tokens bound to the `v: 3` `statementDigest`, add the artifact to your app's Android module and pass your Google Cloud project number, the one linked to the app in Play Console, to `load`. The module finds the artifact and registers its provider with that project number:
 
 ```kotlin
 // the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-play-integrity:0.3.0")
+    implementation("io.fingerly:fingerly-play-integrity:0.4.0")
 }
 ```
 
 ```ts
 const fingerly = await load({
   apiKey: 'fly_pk_production_…',
-  consent: 'granted',
+  consent: ConsentState.Granted,
   playIntegrityCloudProjectNumber: 123456789012,
 })
 ```
