@@ -71,7 +71,7 @@ The package's `lynx.lib.json` registers the `Fingerly` Native Module. The host a
 | --- | --- |
 | Apply `org.lynxsdk.library-settings` in `settings.gradle` and `org.lynxsdk.library-build` in the app module, then sync and rebuild. | Install `cocoapods-lynx-library`, add `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run `pod install`, then rebuild. |
 
-The Android module depends on `io.fingerly:fingerly:0.3.0` from Fingerly's Maven repository (`mavenLocal()` is also configured, for local artifact staging). Android hosts add Fingerly's repository to the repositories in `settings.gradle`:
+The Android module depends on `io.fingerly:fingerly:0.4.0` from Fingerly's Maven repository (`mavenLocal()` is also configured, for local artifact staging). Android hosts add Fingerly's repository to the repositories in `settings.gradle`:
 
 ```groovy
 maven { url 'https://maven.fingerly.io' }
@@ -197,12 +197,12 @@ JavaScript cannot inspect the filesystem, loaded Mach-O or ELF images, debugger 
 
 ## Native SDK dependencies
 
-Both native dependencies are at `0.3.0`.
+Both native dependencies are at `0.4.0`.
 
 <details>
 <summary><b>iOS</b></summary>
 
-`pod install` downloads the matching `Fingerly.xcframework` (`0.3.0`) from `https://maven.fingerly.io/ios/` and verifies its SHA-256 checksum, so the Podfile needs no separate entry for the native SDK. The same binary is published as a Swift package at [sdk-ios](https://github.com/fingerly-io/sdk-ios).
+`pod install` downloads the matching `Fingerly.xcframework` (`0.4.0`) from `https://maven.fingerly.io/ios/` and verifies its SHA-256 checksum, so the Podfile needs no separate entry for the native SDK. The same binary is published as a Swift package at [sdk-ios](https://github.com/fingerly-io/sdk-ios).
 
 The Play Integrity project number passed to `load` is ignored on iOS.
 
@@ -211,25 +211,25 @@ The Play Integrity project number passed to `load` is ignored on iOS.
 <details>
 <summary><b>Android</b></summary>
 
-The module resolves `io.fingerly:fingerly:0.3.0` from `https://maven.fingerly.io`, added to the host's repositories as shown in [Platform setup](#platform-setup).
+The module resolves `io.fingerly:fingerly:0.4.0` from `https://maven.fingerly.io`, added to the host's repositories as shown in [Platform setup](#platform-setup).
 
-**Installed-app checks are opt-in (`io.fingerly:fingerly-app-checks:0.3.0`).** Core `io.fingerly:fingerly:0.3.0` declares zero `<queries>` entries in its manifest, because Google Play treats installed-app visibility as personal and sensitive data. If your app can justify package visibility for the 17 root managers, hooking frameworks and dual-space cloners in its Play review, add `io.fingerly:fingerly-app-checks:0.3.0` to your app's Android module and declare "App activity: Installed apps" in the Data safety form. The module finds the artifact and registers its provider on every `load`, so there is no native code to write:
+**Installed-app checks are opt-in (`io.fingerly:fingerly-app-checks:0.4.0`).** Core `io.fingerly:fingerly:0.4.0` declares zero `<queries>` entries in its manifest, because Google Play treats installed-app visibility as personal and sensitive data. If your app can justify package visibility for the 17 root managers, hooking frameworks and dual-space cloners in its Play review, add `io.fingerly:fingerly-app-checks:0.4.0` to your app's Android module and declare "App activity: Installed apps" in the Data safety form. The module finds the artifact and registers its provider on every `load`, so there is no native code to write:
 
 ```kotlin
 // the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-app-checks:0.3.0")
+    implementation("io.fingerly:fingerly-app-checks:0.4.0")
 }
 ```
 
 Without it, the report carries no installed-app fields and nothing about other apps leaves the device; whether the app itself runs inside a cloner is still reported.
 
-**Play Integrity (optional, `io.fingerly:fingerly-play-integrity:0.3.0`).** To add Google Play Integrity Standard tokens bound to the `v: 3` `statementDigest`, add the artifact to your app's Android module and pass your Google Cloud project number, the one linked to the app in Play Console, to `load`. The module finds the artifact and registers its provider with that project number:
+**Play Integrity (optional, `io.fingerly:fingerly-play-integrity:0.4.0`).** To add Google Play Integrity Standard tokens bound to the `v: 3` `statementDigest`, add the artifact to your app's Android module and pass your Google Cloud project number, the one linked to the app in Play Console, to `load`. The module finds the artifact and registers its provider with that project number:
 
 ```kotlin
 // the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-play-integrity:0.3.0")
+    implementation("io.fingerly:fingerly-play-integrity:0.4.0")
 }
 ```
 

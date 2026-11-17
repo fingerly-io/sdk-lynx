@@ -86,7 +86,7 @@ function installNative(result: unknown = fullResult): TestNativeModule {
       success(JSON.stringify(result))
     }),
     collect: vi.fn((success: Success) => success(JSON.stringify(fullResult.report))),
-    sdkVersion: vi.fn(() => '0.3.0'),
+    sdkVersion: vi.fn(() => '0.4.0'),
   }
   runtime.NativeModules = { Fingerly: native }
   return native
@@ -122,7 +122,7 @@ function installGatedNative(shape: 'ios' | 'android' = 'ios'): TestNativeModule 
       if (consent !== 'granted') failure(refusal())
       else success(JSON.stringify(fullResult.report))
     }),
-    sdkVersion: vi.fn(() => '0.3.0'),
+    sdkVersion: vi.fn(() => '0.4.0'),
   }
   runtime.NativeModules = { Fingerly: native }
   return native
@@ -155,14 +155,14 @@ describe('0.3.0 version and v3 contract parity', () => {
     // The contract types may move ahead of the bridge; it needs the named constants from 0.4.0 on.
     const [typesMajor, typesMinor] = typesPkg.version.split('.').map(Number)
     expect(typesMajor === 0 && (typesMinor ?? 0) >= 4).toBe(true)
-    expect(iosBinary.version).toBe('0.3.0')
-    expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.3.0.xcframework.zip')
+    expect(iosBinary.version).toBe('0.4.0')
+    expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.4.0.xcframework.zip')
     expect(iosBinary.sha256).toBe(
-      'b3288cc4539b6c5b8bae226854a586473b2457489e69b2ac1f26e9f84f6add27',
+      '962dcded8374e162a095c9373d7044e66532a327a002889347c547868cc64460',
     )
     expect(iosBinary.team_id).toBe('XGXX88HRR5')
     expect(androidGradle).toContain('mavenLocal()')
-    expect(androidGradle).toContain('implementation("io.fingerly:fingerly:0.3.0")')
+    expect(androidGradle).toContain('implementation("io.fingerly:fingerly:0.4.0")')
   })
 
   it('aligns public and generated TypeScript declarations with v3 and @fingerly/types', () => {
@@ -457,9 +457,9 @@ describe('native module lifecycle', () => {
     expect(native.configure).toHaveBeenCalledOnce()
   })
 
-  it('returns the collecting 0.3.0 SDK version', () => {
+  it('returns the collecting 0.4.0 SDK version', () => {
     const native = installNative()
-    expect(nativeVersion()).toBe('0.3.0')
+    expect(nativeVersion()).toBe('0.4.0')
 
     native.sdkVersion.mockImplementation(() => {
       throw new Error('bridge error')
