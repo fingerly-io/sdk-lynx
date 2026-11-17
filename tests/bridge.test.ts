@@ -1,4 +1,23 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
+
+import type {
+  FingerlyOptions,
+  IdentifyOptions,
+  IdentifyResult,
+  IdentifySubmission,
+  NativeIdentifyResult,
+  RiskSignal,
+  SignalReport,
+  SuspectLevel,
+} from '../src/index.js'
+import type {
+  FingerlyOptions as DeclaredFingerlyOptions,
+  FingerlySpec,
+  IdentifyResult as DeclaredIdentifyResult,
+  NativeIdentifyResult as DeclaredNativeIdentifyResult,
+  RiskSignal as DeclaredRiskSignal,
+} from '../types/index.js'
 
 type Success = (json: string) => void
 type Failure = (error: string) => void
@@ -27,17 +46,16 @@ const fullResult = {
   visitorConfidence: 91,
   identifiable: true,
   duplicate: false,
-  state: 'scored',
+  state: 'enriched',
   reason: '',
   suspectScore: 42,
-  suspectLevel: 'medium',
-  triggers: [{ signal: 'frida', group: 'instrumentation', weight: 42, confidence: 'high', reason: 'image' }],
+  suspectLevel: 'high',
+  triggers: [{ signal: 'frida', group: 'instrumentation', weight: 16, confidence: 'high', reason: 'image' }],
   verdicts: { jailbreak: { value: true, confidence: 'high', reasons: ['path'] } },
   report: {
-    schema: 1,
+    schema: 2,
     budget_ms: 1000,
     elapsed_ms: 12,
-    tiers: ['fast'],
     sources: {},
     integrity: { patched_natives: [], lies: [], engine: {} },
   },
@@ -51,7 +69,7 @@ function installNative(result: unknown = fullResult): TestNativeModule {
       success(JSON.stringify(result))
     }),
     collect: vi.fn((success: Success) => success(JSON.stringify(fullResult.report))),
-    sdkVersion: vi.fn(() => '0.1.0'),
+    sdkVersion: vi.fn(() => '0.3.0'),
   }
   runtime.NativeModules = { Fingerly: native }
   return native
@@ -87,7 +105,7 @@ function installGatedNative(shape: 'ios' | 'android' = 'ios'): TestNativeModule 
       if (consent !== 'granted') failure(refusal())
       else success(JSON.stringify(fullResult.report))
     }),
-    sdkVersion: vi.fn(() => '0.1.0'),
+    sdkVersion: vi.fn(() => '0.3.0'),
   }
   runtime.NativeModules = { Fingerly: native }
   return native
@@ -96,6 +114,79 @@ function installGatedNative(shape: 'ios' | 'android' = 'ios'): TestNativeModule 
 beforeEach(() => {
   delete runtime.NativeModules
   runtime.SystemInfo = { platform: 'iOS' }
+})
+
+describe('0.3.0 version and v3 contract parity', () => {
+  it('keeps package.json, @fingerly/types, iOS binary metadata, and Android dependency at 0.3.0', () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string
+    }
+    const typesPkg = JSON.parse(
+      readFileSync(new URL('../packages/types/package.json', import.meta.url), 'utf8'),
+    ) as { version: string }
+    const iosBinary = JSON.parse(
+      readFileSync(new URL('../ios/fingerly-binary.json', import.meta.url), 'utf8'),
+    ) as { version: string; url: string; sha256: string; team_id: string }
+    const androidGradle = readFileSync(
+      new URL('../android/build.gradle.kts', import.meta.url),
+      'utf8',
+    )
+
+    expect(pkg.version).toBe('0.3.0')
+    expect(typesPkg.version).toBe('0.3.0')
+    expect(iosBinary.version).toBe('0.3.0')
+    expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.3.0.xcframework.zip')
+    expect(iosBinary.sha256).toBe(
+      'b3288cc4539b6c5b8bae226854a586473b2457489e69b2ac1f26e9f84f6add27',
+    )
+    expect(iosBinary.team_id).toBe('XGXX88HRR5')
+    expect(androidGradle).toContain('mavenLocal()')
+    expect(androidGradle).toContain('implementation("io.fingerly:fingerly:0.3.0")')
+  })
+
+  it('aligns public and generated TypeScript declarations with v3 and @fingerly/types', () => {
+    expectTypeOf<FingerlyOptions['playIntegrityCloudProjectNumber']>().toEqualTypeOf<
+      number | undefined
+    >()
+    expectTypeOf<DeclaredFingerlyOptions>().toEqualTypeOf<FingerlyOptions>()
+    expectTypeOf<Parameters<FingerlySpec['configure']>>().toEqualTypeOf<
+      [string, string, string, string, number]
+    >()
+    expectTypeOf<IdentifyOptions>().not.toHaveProperty('tiers')
+    expectTypeOf<SignalReport>().not.toHaveProperty('tiers')
+    expectTypeOf<IdentifySubmission['v']>().toEqualTypeOf<3>()
+    expectTypeOf<IdentifyResult['visitorId']>().toEqualTypeOf<string>()
+    expectTypeOf<IdentifyResult['visitorIsNew']>().toEqualTypeOf<boolean>()
+    expectTypeOf<NativeIdentifyResult['visitorId']>().toEqualTypeOf<string>()
+    expectTypeOf<NativeIdentifyResult['visitorIsNew']>().toEqualTypeOf<boolean | null>()
+    expectTypeOf<NativeIdentifyResult['suspectLevel']>().toEqualTypeOf<SuspectLevel | null>()
+    expectTypeOf<DeclaredIdentifyResult>().toEqualTypeOf<IdentifyResult>()
+    expectTypeOf<DeclaredNativeIdentifyResult>().toEqualTypeOf<NativeIdentifyResult>()
+    expectTypeOf<DeclaredRiskSignal>().toEqualTypeOf<RiskSignal>()
+
+    const v3NativeSignals = [
+      'attestation_failed',
+      'attestation_missing',
+      'attestation_downgrade',
+      'app_attest_key_churn',
+      'play_device_integrity_failed',
+      'play_app_unrecognized',
+      'device_inconsistent',
+      'report_incomplete',
+      'probe_errors',
+      'tampering',
+      'custom_root_ca',
+      'secondary_user_profile',
+      'frida',
+      'mitm_attack',
+      'jailbreak',
+      'root_apps',
+      'app_cloner',
+      'emulator',
+      'simulator',
+    ] as const satisfies readonly RiskSignal[]
+    expectTypeOf<(typeof v3NativeSignals)[number]>().toMatchTypeOf<RiskSignal>()
+  })
 })
 
 describe('platform contract', () => {
@@ -120,19 +211,49 @@ describe('platform contract', () => {
 })
 
 describe('Play Integrity', () => {
-  it('hands the project number to the native configure', async () => {
+  it('hands the project number to the native configure on Android and iOS', async () => {
     runtime.SystemInfo = { platform: 'Android' }
-    const native = installNative()
+    const androidNative = installNative()
     await load({ apiKey: 'fly_pk_development_test', playIntegrityCloudProjectNumber: 123456789012 })
-    expect(native.configure).toHaveBeenCalledWith('fly_pk_development_test', '', 'lynx-android', 'pending', 123456789012)
+    expect(androidNative.configure).toHaveBeenCalledWith(
+      'fly_pk_development_test',
+      '',
+      'lynx-android',
+      'pending',
+      123456789012,
+    )
+
+    runtime.SystemInfo = { platform: 'iOS' }
+    const iosNative = installNative()
+    await load({ apiKey: 'fly_pk_development_test', playIntegrityCloudProjectNumber: 123456789012 })
+    expect(iosNative.configure).toHaveBeenCalledWith(
+      'fly_pk_development_test',
+      '',
+      'lynx-ios',
+      'pending',
+      123456789012,
+    )
   })
 
-  it('refuses a value that is not a project number before configuring', async () => {
+  it('refuses a value that is not a positive safe integer project number before configuring', async () => {
     runtime.SystemInfo = { platform: 'Android' }
-    for (const bad of [0, -5, 1.5, Number.NaN, '123456789012']) {
+    for (const bad of [
+      0,
+      -5,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+      '123456789012',
+      null,
+      true,
+    ]) {
       const native = installNative()
       await expect(
-        load({ apiKey: 'fly_pk_development_test', playIntegrityCloudProjectNumber: bad as number }),
+        load({
+          apiKey: 'fly_pk_development_test',
+          playIntegrityCloudProjectNumber: bad as unknown as number,
+        }),
       ).rejects.toThrow(TypeError)
       expect(native.configure).not.toHaveBeenCalled()
     }
@@ -151,9 +272,15 @@ describe('native module lifecycle', () => {
     expect(native.configure).toHaveBeenCalledOnce()
   })
 
-  it('returns the collecting SDK version', () => {
-    installNative()
-    expect(nativeVersion()).toBe('0.1.0')
+  it('returns the collecting 0.3.0 SDK version', () => {
+    const native = installNative()
+    expect(nativeVersion()).toBe('0.3.0')
+
+    native.sdkVersion.mockImplementation(() => {
+      throw new Error('bridge error')
+    })
+    expect(nativeVersion()).toBeUndefined()
+
     delete runtime.NativeModules
     expect(nativeVersion()).toBeUndefined()
   })
@@ -186,21 +313,105 @@ describe('identify', () => {
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.requestId).toBe('req_123')
     expect(result.visitorId).toBe('vis_123')
+    expect(result.visitorIsNew).toBe(false)
+    expect(result.visitorConfidence).toBe(91)
+    expect(result.identifiable).toBe(true)
+    expect(result.duplicate).toBe(false)
+    expect(result.state).toBe('enriched')
     expect(result.suspectScore).toBe(42)
+    expect(result.suspectLevel).toBe('high')
     expect(result).not.toHaveProperty('triggers')
-    expect(result.report.schema).toBe(1)
+    expect(result.report.schema).toBe(2)
+    expect(result.report).not.toHaveProperty('tiers')
+  })
+
+  it('handles v3 Option B unidentifiable results with visitorId "" and visitorIsNew false', async () => {
+    installNative({
+      requestId: 'req_unid',
+      visitorId: '',
+      visitorIsNew: false,
+      visitorConfidence: 0,
+      identifiable: false,
+      duplicate: false,
+      state: 'enriched',
+      suspectScore: 33,
+      suspectLevel: 'high',
+      report: fullResult.report,
+    })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+    expect(result.requestId).toBe('req_unid')
+    expect(result.identifiable).toBe(false)
+    expect(result.visitorId).toBe('')
+    expect(result.visitorIsNew).toBe(false)
+    expect(result.visitorConfidence).toBe(0)
+    expect(result.suspectScore).toBe(33)
+    expect(result.suspectLevel).toBe('high')
+  })
+
+  it('enforces Option B invariants when identifiable is false or visitorId is empty', async () => {
+    installNative({
+      requestId: 'req_unid_legacy',
+      visitorId: 'vis_stale',
+      visitorIsNew: true,
+      visitorConfidence: 0,
+      identifiable: false,
+      state: 'enriched',
+      report: fullResult.report,
+    })
+    const unidentifiable = await (
+      await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    ).identify()
+    expect(unidentifiable.identifiable).toBe(false)
+    expect(unidentifiable.visitorId).toBe('')
+    expect(unidentifiable.visitorIsNew).toBe(false)
+
+    installNative({
+      requestId: 'req_empty_vid',
+      visitorId: '',
+      visitorIsNew: true,
+      visitorConfidence: 0,
+      identifiable: true,
+      state: 'enriched',
+      report: fullResult.report,
+    })
+    const emptyVisitor = await (
+      await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    ).identify()
+    expect(emptyVisitor.visitorId).toBe('')
+    expect(emptyVisitor.visitorIsNew).toBe(false)
+  })
+
+  it('preserves visitorIsNew true when a fresh visitorId was minted', async () => {
+    installNative({
+      requestId: 'req_minted',
+      visitorId: 'vis_fresh',
+      visitorIsNew: true,
+      visitorConfidence: 0,
+      identifiable: true,
+      duplicate: false,
+      state: 'enriched',
+      suspectScore: 0,
+      suspectLevel: 'low',
+      report: fullResult.report,
+    })
+    const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
+    expect(result.visitorId).toBe('vis_fresh')
+    expect(result.visitorIsNew).toBe(true)
+    expect(result.visitorConfidence).toBe(0)
+    expect(result.suspectScore).toBe(0)
+    expect(result.suspectLevel).toBe('low')
   })
 
   it('carries a score from an answer that has no signals', async () => {
-    installNative({ requestId: 'req_1', visitorId: 'vis_1', suspectScore: 41, suspectLevel: 'medium', report: fullResult.report })
+    installNative({ requestId: 'req_1', visitorId: 'vis_1', suspectScore: 41, suspectLevel: 'high', report: fullResult.report })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.suspectScore).toBe(41)
-    expect(result.suspectLevel).toBe('medium')
+    expect(result.suspectLevel).toBe('high')
     expect(result).not.toHaveProperty('triggers')
   })
 
   it('reads an answer with neither score nor signals, the same as a hidden score', async () => {
-    installNative({ requestId: 'req_1', visitorId: 'vis_1', state: 'scored', report: fullResult.report })
+    installNative({ requestId: 'req_1', visitorId: 'vis_1', state: 'enriched', report: fullResult.report })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.requestId).toBe('req_1')
     expect(result.suspectScore).toBeNull()
@@ -221,7 +432,7 @@ describe('identify', () => {
     ['Android writes null', { visitorIsNew: null, visitorConfidence: null, identifiable: null, duplicate: null, suspectScore: null, suspectLevel: null }],
     ['iOS leaves the key out', {}],
   ])('reads an answer the server did not give as null: %s', async (_label, unsaid) => {
-    installNative({ requestId: 'req_dup', visitorId: '', state: 'scored', report: fullResult.report, ...unsaid })
+    installNative({ requestId: 'req_dup', visitorId: '', state: 'enriched', report: fullResult.report, ...unsaid })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
 
     for (const field of ['visitorIsNew', 'visitorConfidence', 'identifiable', 'duplicate', 'suspectScore', 'suspectLevel'] as const) {
@@ -230,7 +441,7 @@ describe('identify', () => {
   })
 
   it('keeps a duplicate answer true with its visitor fields empty', async () => {
-    installNative({ requestId: 'req_dup', visitorId: '', duplicate: true, state: 'scored', report: fullResult.report })
+    installNative({ requestId: 'req_dup', visitorId: '', duplicate: true, state: 'enriched', report: fullResult.report })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
 
     expect(result.duplicate).toBe(true)
@@ -335,6 +546,17 @@ describe('consent', () => {
     expect(client.consent).toBe('denied')
   })
 
+  it('wraps a synchronous setConsent failure without changing the stored state', async () => {
+    const native = installNative()
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'pending' })
+    native.setConsent.mockImplementation(() => {
+      throw new Error('bridge disconnected')
+    })
+
+    expect(() => client.setConsent('granted')).toThrow(FingerlyError)
+    expect(client.consent).toBe('pending')
+  })
+
   it.each(['pending', 'denied'] as const)(
     'maps an iOS consent_required failure to ConsentError (%s)',
     async (consent) => {
@@ -354,7 +576,7 @@ describe('consent', () => {
     },
   )
 
-  it('reads the state from the message when Android sends none', async () => {
+  it('reads the state from the message when Android sends none, and falls back to pending', async () => {
     runtime.SystemInfo = { platform: 'Android' }
     installGatedNative('android')
     const client = await load({ apiKey: 'fly_pk_development_test', consent: 'denied' })
@@ -362,6 +584,19 @@ describe('consent', () => {
       name: 'ConsentError',
       code: 'consent_required',
       state: 'denied',
+    })
+
+    const native = installNative()
+    native.identify.mockImplementation(
+      (_tag: string | null, _submit: boolean, _automatic: boolean, _success: Success, failure: Failure) => {
+        failure(JSON.stringify({ code: 'consent_required', message: 'refused' }))
+      },
+    )
+    const fallbackClient = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    await expect(fallbackClient.identify()).rejects.toMatchObject({
+      name: 'ConsentError',
+      code: 'consent_required',
+      state: 'pending',
     })
   })
 
@@ -382,7 +617,7 @@ describe('collection and failures', () => {
   it('parses the report returned by collect', async () => {
     installNative()
     const report = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).collect()
-    expect(report.schema).toBe(1)
+    expect(report.schema).toBe(2)
   })
 
   it('preserves positive HTTP status codes', async () => {
@@ -400,15 +635,18 @@ describe('collection and failures', () => {
     })
   })
 
-  it('carries the iOS adapter retryAfterMs on the error', async () => {
-    const native = installNative()
-    native.identify.mockImplementation(
-      (_tag: string | null, _submit: boolean, _automatic: boolean, _success: Success, failure: Failure) => {
-        failure(JSON.stringify({ code: '429', message: 'Too many requests', retryAfterMs: 3000 }))
-      },
-    )
-    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
-    await expect(client.identify()).rejects.toMatchObject({ status: 429, retryAfterMs: 3000 })
+  it('carries retryAfterMs on 429 and 503 errors on both iOS and Android', async () => {
+    for (const platform of ['iOS', 'Android'] as const) {
+      runtime.SystemInfo = { platform }
+      const native = installNative()
+      native.identify.mockImplementation(
+        (_tag: string | null, _submit: boolean, _automatic: boolean, _success: Success, failure: Failure) => {
+          failure(JSON.stringify({ code: '429', message: 'Too many requests', retryAfterMs: 3000 }))
+        },
+      )
+      const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+      await expect(client.identify()).rejects.toMatchObject({ status: 429, retryAfterMs: 3000 })
+    }
   })
 
   it('leaves retryAfterMs undefined when no usable wait was named', async () => {
@@ -424,6 +662,29 @@ describe('collection and failures', () => {
       expect(error).toBeInstanceOf(FingerlyError)
       expect((error as InstanceType<typeof FingerlyError>).retryAfterMs).toBeUndefined()
     }
+  })
+
+  it('wraps plain-text failures and synchronous bridge throws in FingerlyError', async () => {
+    const native = installNative()
+    native.configure.mockImplementationOnce(() => {
+      throw new Error('secret key refused')
+    })
+    await expect(load({ apiKey: 'fly_sk_development_bad' })).rejects.toMatchObject({
+      name: 'FingerlyError',
+      message: 'secret key refused',
+    })
+
+    native.identify.mockImplementationOnce(
+      (_tag: string | null, _submit: boolean, _automatic: boolean, _success: Success, failure: Failure) => {
+        failure('plain native failure')
+      },
+    )
+    const client = await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })
+    await expect(client.identify()).rejects.toMatchObject({
+      name: 'FingerlyError',
+      message: 'plain native failure',
+      status: undefined,
+    })
   })
 
   it('does not expose native sentinel codes as HTTP statuses', async () => {
@@ -456,16 +717,17 @@ describe('unreadable native answers', () => {
     }
   })
 
-  it('passes on only what the server tells an app', async () => {
+  it('passes on only what the server tells an app and defaults missing visitorId to ""', async () => {
     installNative({
       requestId: 'req_1',
       state: 'unavailable',
       reason: 'ip-database-not-loaded',
-      report: { schema: 1, sources: {} },
+      report: { schema: 2, sources: {} },
       somethingNew: { a: 1 },
     })
     const result = await (await load({ apiKey: 'fly_pk_development_test', consent: 'granted' })).identify()
     expect(result.requestId).toBe('req_1')
+    expect(result.visitorId).toBe('')
     expect(result.state).toBe('unavailable')
     expect(result).not.toHaveProperty('reason')
     expect(result).not.toHaveProperty('somethingNew')
@@ -504,6 +766,18 @@ describe('deleteStoredIdentity', () => {
     expect((error as InstanceType<typeof FingerlyError>).status).toBeUndefined()
   })
 
+  it('wraps a synchronous deleteStoredIdentity throw in FingerlyError', async () => {
+    const native = installNative()
+    ;(native as unknown as Record<string, unknown>).deleteStoredIdentity = vi.fn(() => {
+      throw new Error('storage locked')
+    })
+
+    await expect(deleteStoredIdentity()).rejects.toMatchObject({
+      name: 'FingerlyError',
+      message: 'storage locked',
+    })
+  })
+
   it('says so when the native SDK in the app predates it', async () => {
     installNative()
 
@@ -512,5 +786,20 @@ describe('deleteStoredIdentity', () => {
 
   it('reports the missing native module', async () => {
     await expect(deleteStoredIdentity()).rejects.toThrow(/could not find its Fingerly native module/)
+  })
+
+  it('documents deleteStoredIdentity strictly for user-initiated GDPR/privacy erasure across TS and native adapters', () => {
+    const tsSource = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8')
+    const dtsSource = readFileSync(new URL('../types/index.d.ts', import.meta.url), 'utf8')
+    const javaSource = readFileSync(
+      new URL('../android/src/main/java/io/fingerly/lynx/Fingerly.java', import.meta.url),
+      'utf8',
+    )
+    const objcSource = readFileSync(new URL('../ios/src/Fingerly.m', import.meta.url), 'utf8')
+
+    for (const source of [tsSource, dtsSource, javaSource, objcSource]) {
+      expect(source).toMatch(/GDPR/i)
+      expect(source).toMatch(/user-initiated/i)
+    }
   })
 })

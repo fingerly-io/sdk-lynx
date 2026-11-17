@@ -14,13 +14,14 @@ package = JSON.parse(File.read(File.join(__dir__, '..', 'package.json')))
 binary = JSON.parse(File.read(File.join(__dir__, 'fingerly-binary.json')))
 
 unless system('bash', File.join(__dir__, 'fetch-fingerly-xcframework.sh'),
-              binary['version'], binary['sha256'].to_s, __dir__)
+              binary['version'], binary['sha256'].to_s, __dir__, binary['url'].to_s,
+              binary['team_id'].to_s)
   raise "Could not fetch Fingerly.xcframework #{binary['version']}. See the message above."
 end
 
 Pod::Spec.new do |s|
   s.name = 'fingerly-lynx'
-  s.version = package['version']
+  s.version = package['version'] || '0.3.0'
   s.summary = 'Fingerly native bridge for Lynx'
   s.homepage = 'https://fingerly.io'
   s.license = { :type => 'Apache-2.0', :file => '../LICENSE' }
