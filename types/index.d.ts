@@ -12,9 +12,20 @@ export {
   load,
   nativeVersion,
 } from '../src/index';
-export type {
+/**
+ * Named constants for the fixed values the API returns and the module accepts,
+ * the same objects `@fingerly/web-js` exports. Each is also the type of its
+ * values.
+ */
+export {
   Confidence,
   ConsentState,
+  EventState,
+  SdkPlatform,
+  Signal,
+  SuspectLevel,
+} from '../src/index';
+export type {
   EngineIdentity,
   FingerlyOptions,
   IdentifyOptions,
@@ -29,9 +40,8 @@ export type {
   NativeIdentifyResult,
   RawReportResult,
   RiskSignal,
-  SdkPlatform,
+  SignalName,
   SignalOutcome,
   SignalReport,
   SignalStatus,
-  SuspectLevel,
 } from '../src/index';

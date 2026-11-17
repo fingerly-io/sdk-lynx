@@ -2,11 +2,11 @@
 
 import { requireFingerly } from '../generated/Fingerly'
 
+import { ConsentState, SdkPlatform } from '@fingerly/types'
 import type {
   MobileFingerlyOptions,
   MobileIdentifyOptions,
   NativeIdentifyResult,
-  SdkPlatform,
   SignalReport,
 } from '@fingerly/types'
 
@@ -33,13 +33,6 @@ interface FingerlyNativeModule {
   deleteStoredIdentity?(success: () => void, failure: (error: string) => void): void
   sdkVersion(): string
 }
-
-/**
- * Whether the user has agreed to be identified. Spelled as in `@fingerly/core`
- * and the native SDKs; declared here so this package builds against any copy of
- * `@fingerly/types`, including one that predates consent.
- */
-export type ConsentState = 'granted' | 'pending' | 'denied'
 
 export interface FingerlyOptions extends MobileFingerlyOptions {
   /**
@@ -115,7 +108,7 @@ export class ConsentError extends FingerlyError {
 
 const CONSENT_REQUIRED = 'consent_required'
 
-const CONSENT_STATES: readonly ConsentState[] = ['granted', 'pending', 'denied']
+const CONSENT_STATES: readonly ConsentState[] = Object.values(ConsentState)
 
 function isConsentState(value: unknown): value is ConsentState {
   return CONSENT_STATES.includes(value as ConsentState)
@@ -156,14 +149,14 @@ function refusedConsent(record: Record<string, unknown> | undefined, message: st
   const fromNative = record?.state
   if (isConsentState(fromNative)) return fromNative
   const fromMessage = /\(consent is (\w+)\)/.exec(message)?.[1]
-  return isConsentState(fromMessage) ? fromMessage : 'pending'
+  return isConsentState(fromMessage) ? fromMessage : ConsentState.Pending
 }
 
 /**
  * The consent last handed to the native SDK. Module state because the native
  * bridge keeps one client per process, shared by every `FingerlyClient` here.
  */
-let currentConsent: ConsentState = 'pending'
+let currentConsent: ConsentState = ConsentState.Pending
 
 const MISSING_NATIVE_MODULE =
   '@fingerly/lynx could not find its Fingerly native module. Enable Lynx Native ' +
@@ -187,8 +180,8 @@ function nativeModule(): FingerlyNativeModule {
 
 function platformName(): SdkPlatform {
   const platform = typeof SystemInfo === 'undefined' ? undefined : SystemInfo?.platform
-  if (platform === 'Android') return 'lynx-android'
-  if (platform === 'iOS') return 'lynx-ios'
+  if (platform === 'Android') return SdkPlatform.LynxAndroid
+  if (platform === 'iOS') return SdkPlatform.LynxIos
   throw new FingerlyError(
     `@fingerly/lynx supports iOS and Android only; received ${platform ?? 'an unknown platform'}.`,
   )
@@ -391,7 +384,7 @@ export class FingerlyClient {
  * here, or `pending` when there is none, replaces what the native SDK held.
  */
 export async function load(options: FingerlyOptions): Promise<FingerlyClient> {
-  const consent = options.consent ?? 'pending'
+  const consent = options.consent ?? ConsentState.Pending
   assertConsentState(consent)
   const playIntegrity = options.playIntegrityCloudProjectNumber
   assertCloudProjectNumber(playIntegrity)
@@ -449,8 +442,22 @@ export function nativeVersion(): string | undefined {
   }
 }
 
-export type {
+// Runtime constants for the fixed values the API returns and the module
+// accepts, the same objects `@fingerly/core` and `@fingerly/web-js` export, so
+// `result.suspectLevel === SuspectLevel.High` reads the same in every
+// JavaScript SDK. Each is also the type of its values. They are names for
+// strings, not a filter: the module hands on the server's values as they came,
+// so one a newer server adds still reaches the app unchanged.
+export {
   Confidence,
+  ConsentState,
+  EventState,
+  SdkPlatform,
+  Signal,
+  SuspectLevel,
+} from '@fingerly/types'
+
+export type {
   EngineIdentity,
   IdentifyResult,
   IdentifySubmission,
@@ -462,9 +469,8 @@ export type {
   MobileIdentifyOptions,
   NativeIdentifyResult,
   RiskSignal,
-  SdkPlatform,
+  SignalName,
   SignalOutcome,
   SignalReport,
   SignalStatus,
-  SuspectLevel,
 } from '@fingerly/types'
