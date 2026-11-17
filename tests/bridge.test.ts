@@ -117,7 +117,7 @@ beforeEach(() => {
 })
 
 describe('0.3.0 version and v3 contract parity', () => {
-  it('keeps package.json, @fingerly/types, iOS binary metadata, and Android dependency at 0.3.0', () => {
+  it('keeps package.json, iOS binary metadata, and Android dependency at 0.3.0', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
       version: string
     }
@@ -135,7 +135,9 @@ describe('0.3.0 version and v3 contract parity', () => {
     )
 
     expect(pkg.version).toBe('0.3.0')
-    expect(typesPkg.version).toBe('0.3.0')
+    // The contract types may move ahead of the bridge; it needs the v3 types from 0.3.0 on.
+    const [typesMajor, typesMinor] = typesPkg.version.split('.').map(Number)
+    expect(typesMajor === 0 && (typesMinor ?? 0) >= 3).toBe(true)
     expect(iosBinary.version).toBe('0.3.0')
     expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.3.0.xcframework.zip')
     expect(iosBinary.sha256).toBe(
