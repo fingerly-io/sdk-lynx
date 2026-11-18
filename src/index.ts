@@ -39,8 +39,10 @@ export interface FingerlyOptions extends MobileFingerlyOptions {
    * The consent to start from, `pending` when omitted. Call `setConsent` once
    * your consent tool has an answer. Until consent is `granted`, `identify()`
    * and `collect()` reject with a `ConsentError` and the native SDK runs no
-   * source and sends nothing. Pass `granted` only once the user has agreed, or
-   * where another lawful basis applies.
+   * source and sends nothing. Pass `granted` only once collection is permitted
+   * for this user: they consented, or the law that applies to them does not
+   * require consent. A GDPR lawful basis such as legitimate interest is not
+   * enough on its own.
    */
   consent?: ConsentState
   /**
