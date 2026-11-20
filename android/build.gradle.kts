@@ -15,6 +15,8 @@ android {
 
   defaultConfig {
     minSdk = 23
+    // Lets an app's R8 build pass without the optional artifacts.
+    consumerProguardFiles("consumer-rules.pro")
   }
 
   compileOptions {

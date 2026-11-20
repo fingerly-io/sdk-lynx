@@ -133,7 +133,7 @@ beforeEach(() => {
   runtime.SystemInfo = { platform: 'iOS' }
 })
 
-describe('0.4.1 version and v3 contract parity', () => {
+describe('0.4.2 version and v3 contract parity', () => {
   it('keeps package.json, iOS binary metadata, and Android dependency at their versions', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
       version: string
@@ -151,7 +151,7 @@ describe('0.4.1 version and v3 contract parity', () => {
       'utf8',
     )
 
-    expect(pkg.version).toBe('0.4.1')
+    expect(pkg.version).toBe('0.4.2')
     // The contract types may move ahead of the bridge; it needs the named constants from 0.4.0 on.
     const [typesMajor, typesMinor] = typesPkg.version.split('.').map(Number)
     expect(typesMajor === 0 && (typesMinor ?? 0) >= 4).toBe(true)
@@ -162,6 +162,11 @@ describe('0.4.1 version and v3 contract parity', () => {
     )
     expect(iosBinary.team_id).toBe('XGXX88HRR5')
     expect(androidGradle).toContain('mavenLocal()')
+    // An app that leaves out the optional artifacts must still pass R8.
+    expect(androidGradle).toContain('consumerProguardFiles("consumer-rules.pro")')
+    const rules = readFileSync(new URL('../android/consumer-rules.pro', import.meta.url), 'utf8')
+    expect(rules).toContain('-dontwarn io.fingerly.sdk.appchecks.**')
+    expect(rules).toContain('-dontwarn io.fingerly.sdk.playintegrity.**')
     expect(androidGradle).toContain('implementation("io.fingerly:fingerly:0.4.0")')
   })
 
