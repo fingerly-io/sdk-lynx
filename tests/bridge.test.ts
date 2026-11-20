@@ -133,8 +133,8 @@ beforeEach(() => {
   runtime.SystemInfo = { platform: 'iOS' }
 })
 
-describe('0.4.0 version and v3 contract parity', () => {
-  it('keeps package.json, iOS binary metadata, and Android dependency at 0.4.0', () => {
+describe('0.4.1 version and v3 contract parity', () => {
+  it('keeps package.json, iOS binary metadata, and Android dependency at their versions', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
       version: string
     }
@@ -151,14 +151,14 @@ describe('0.4.0 version and v3 contract parity', () => {
       'utf8',
     )
 
-    expect(pkg.version).toBe('0.4.0')
+    expect(pkg.version).toBe('0.4.1')
     // The contract types may move ahead of the bridge; it needs the named constants from 0.4.0 on.
     const [typesMajor, typesMinor] = typesPkg.version.split('.').map(Number)
     expect(typesMajor === 0 && (typesMinor ?? 0) >= 4).toBe(true)
-    expect(iosBinary.version).toBe('0.4.0')
-    expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.4.0.xcframework.zip')
+    expect(iosBinary.version).toBe('0.4.1')
+    expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.4.1.xcframework.zip')
     expect(iosBinary.sha256).toBe(
-      '962dcded8374e162a095c9373d7044e66532a327a002889347c547868cc64460',
+      '74bb15a4b72b55524f4d2cb8567037c7f76088747bb5c866dfee61eb5f7d056e',
     )
     expect(iosBinary.team_id).toBe('XGXX88HRR5')
     expect(androidGradle).toContain('mavenLocal()')

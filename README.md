@@ -21,7 +21,7 @@
 
 ## What is this
 
-`@fingerly/lynx` (`0.4.0`, `v: 3`) is the Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and Android SDKs; all collection, transport and attestation stay native. You call `identify()` from Lynx background-thread scripting and get back a request ID and a visitor ID to send to your own backend, which decides what to do. [Fingerly](https://fingerly.io) is a device intelligence API that helps you protect signups, logins and payments from fraud and abuse.
+`@fingerly/lynx` (`0.4.1`, `v: 3`) is the Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and Android SDKs; all collection, transport and attestation stay native. You call `identify()` from Lynx background-thread scripting and get back a request ID and a visitor ID to send to your own backend, which decides what to do. [Fingerly](https://fingerly.io) is a device intelligence API that helps you protect signups, logins and payments from fraud and abuse.
 
 Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron and per-`LynxView` registration.
 
@@ -31,7 +31,7 @@ Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron 
 2. **Install the package.**
 
    ```sh
-   pnpm add @fingerly/lynx@^0.4.0
+   pnpm add @fingerly/lynx@^0.4.1
    ```
 
    The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide/autolink). See [Platform setup](#platform-setup) for the Android and iOS steps.
@@ -197,12 +197,12 @@ JavaScript cannot inspect the filesystem, loaded Mach-O or ELF images, debugger 
 
 ## Native SDK dependencies
 
-Both native dependencies are at `0.4.0`.
+The iOS dependency is at `0.4.1` and the Android dependency at `0.4.0`.
 
 <details>
 <summary><b>iOS</b></summary>
 
-`pod install` downloads the matching `Fingerly.xcframework` (`0.4.0`) from `https://maven.fingerly.io/ios/` and verifies its SHA-256 checksum, so the Podfile needs no separate entry for the native SDK. The same binary is published as a Swift package at [sdk-ios](https://github.com/fingerly-io/sdk-ios).
+`pod install` downloads the matching `Fingerly.xcframework` (`0.4.1`) from `https://maven.fingerly.io/ios/` and verifies its SHA-256 checksum, so the Podfile needs no separate entry for the native SDK. The same binary is published as a Swift package at [sdk-ios](https://github.com/fingerly-io/sdk-ios).
 
 The Play Integrity project number passed to `load` is ignored on iOS.
 
