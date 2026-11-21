@@ -217,6 +217,7 @@ describe('0.4.2 version and v3 contract parity', () => {
 /** Every signal group and raw detector the server reports (`server/domain/risk`). */
 const SERVER_SIGNALS = [
   'active_call',
+  'ai_spoofed',
   'android_emulator',
   'antidetect_browser',
   'anycast_ip',
@@ -246,6 +247,7 @@ const SERVER_SIGNALS = [
   'frida_detected',
   'geo_mismatch',
   'high_activity',
+  'identity_obfuscated',
   'incognito',
   'incognito_mode',
   'ios_simulator',
@@ -286,7 +288,6 @@ const SERVER_SIGNALS = [
   'vpn_os_mismatch',
   'vpn_public',
   'vpn_relay',
-  'vpn_timezone',
   'web_ticket_invalid',
   'web_ticket_missing',
 ]
@@ -317,7 +318,7 @@ describe('named constants', () => {
 
   it('pin every value to the server lists', () => {
     expect([...Object.values(Signal)].sort()).toEqual(SERVER_SIGNALS)
-    expect(Object.values(Signal)).toHaveLength(73)
+    expect(Object.values(Signal)).toHaveLength(74)
     expect(Object.values(Signal)).not.toContain('app_attest_key_churn')
     expect(Object.values(SuspectLevel)).toEqual(['low', 'medium', 'high'])
     expect(Object.values(Confidence)).toEqual(['low', 'medium', 'high'])
