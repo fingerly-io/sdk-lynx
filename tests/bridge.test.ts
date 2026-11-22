@@ -133,7 +133,7 @@ beforeEach(() => {
   runtime.SystemInfo = { platform: 'iOS' }
 })
 
-describe('0.4.2 version and v3 contract parity', () => {
+describe('0.4.3 version and v3 contract parity', () => {
   it('keeps package.json, iOS binary metadata, and Android dependency at their versions', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
       version: string
@@ -151,10 +151,10 @@ describe('0.4.2 version and v3 contract parity', () => {
       'utf8',
     )
 
-    expect(pkg.version).toBe('0.4.2')
-    // The contract types may move ahead of the bridge; it needs the named constants from 0.4.0 on.
+    expect(pkg.version).toBe('0.4.3')
+    // The contract types may move ahead of the bridge; it needs the signal names of 0.6.0 on.
     const [typesMajor, typesMinor] = typesPkg.version.split('.').map(Number)
-    expect(typesMajor === 0 && (typesMinor ?? 0) >= 4).toBe(true)
+    expect(typesMajor === 0 && (typesMinor ?? 0) >= 6).toBe(true)
     expect(iosBinary.version).toBe('0.4.1')
     expect(iosBinary.url).toBe('https://maven.fingerly.io/ios/Fingerly-0.4.1.xcframework.zip')
     expect(iosBinary.sha256).toBe(
@@ -217,6 +217,7 @@ describe('0.4.2 version and v3 contract parity', () => {
 /** Every signal group and raw detector the server reports (`server/domain/risk`). */
 const SERVER_SIGNALS = [
   'active_call',
+  'ai_spoofed',
   'android_emulator',
   'antidetect_browser',
   'anycast_ip',
@@ -227,6 +228,7 @@ const SERVER_SIGNALS = [
   'automation',
   'bad_bot',
   'bogon_ip',
+  'bootloader_unlocked',
   'bot',
   'browser_tampering',
   'cloned_app',
@@ -246,6 +248,7 @@ const SERVER_SIGNALS = [
   'frida_detected',
   'geo_mismatch',
   'high_activity',
+  'identity_obfuscated',
   'incognito',
   'incognito_mode',
   'ios_simulator',
@@ -286,7 +289,6 @@ const SERVER_SIGNALS = [
   'vpn_os_mismatch',
   'vpn_public',
   'vpn_relay',
-  'vpn_timezone',
   'web_ticket_invalid',
   'web_ticket_missing',
 ]
@@ -317,7 +319,7 @@ describe('named constants', () => {
 
   it('pin every value to the server lists', () => {
     expect([...Object.values(Signal)].sort()).toEqual(SERVER_SIGNALS)
-    expect(Object.values(Signal)).toHaveLength(73)
+    expect(Object.values(Signal)).toHaveLength(75)
     expect(Object.values(Signal)).not.toContain('app_attest_key_churn')
     expect(Object.values(SuspectLevel)).toEqual(['low', 'medium', 'high'])
     expect(Object.values(Confidence)).toEqual(['low', 'medium', 'high'])
