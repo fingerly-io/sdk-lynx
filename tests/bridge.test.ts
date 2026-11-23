@@ -167,7 +167,21 @@ describe('0.4.3 version and v3 contract parity', () => {
     const rules = readFileSync(new URL('../android/consumer-rules.pro', import.meta.url), 'utf8')
     expect(rules).toContain('-dontwarn io.fingerly.sdk.appchecks.**')
     expect(rules).toContain('-dontwarn io.fingerly.sdk.playintegrity.**')
-    expect(androidGradle).toContain('implementation("io.fingerly:fingerly:0.4.0")')
+    expect(androidGradle).toContain('implementation("io.fingerly:fingerly:0.5.0")')
+    expect(androidGradle).toContain('compileOnly("io.fingerly:fingerly-app-checks:0.5.0")')
+    expect(androidGradle).toContain('compileOnly("io.fingerly:fingerly-play-integrity:0.5.0")')
+  })
+
+  it('says an Android erasure also needs "Erase a visitor", since Android 0.5.0 links reinstalls', () => {
+    const source = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8')
+    const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+    for (const text of [source, readme]) {
+      expect(text).toContain('Erase a visitor')
+      expect(text).toContain('ANDROID_ID')
+    }
+    expect(readme).toContain('a reinstall keeps its `visitorId` until a factory reset')
+    expect(readme).not.toMatch(/so the server mints an unlinked/)
+    expect(readme).not.toContain('Android dependency at `0.4.0`')
   })
 
   it('aligns public and generated TypeScript declarations with v3 and @fingerly/types', () => {
