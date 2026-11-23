@@ -133,7 +133,7 @@ beforeEach(() => {
   runtime.SystemInfo = { platform: 'iOS' }
 })
 
-describe('0.4.3 version and v3 contract parity', () => {
+describe('0.5.0 version and v3 contract parity', () => {
   it('keeps package.json, iOS binary metadata, and Android dependency at their versions', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
       version: string
@@ -151,7 +151,7 @@ describe('0.4.3 version and v3 contract parity', () => {
       'utf8',
     )
 
-    expect(pkg.version).toBe('0.4.3')
+    expect(pkg.version).toBe('0.5.0')
     // The contract types may move ahead of the bridge; it needs the signal names of 0.6.0 on.
     const [typesMajor, typesMinor] = typesPkg.version.split('.').map(Number)
     expect(typesMajor === 0 && (typesMinor ?? 0) >= 6).toBe(true)
