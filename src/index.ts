@@ -416,7 +416,10 @@ export async function load(options: FingerlyOptions): Promise<FingerlyClient> {
  * Needs no `load` and no consent, and sends nothing; resolves once no local
  * record or attestation key remains, including when there was none. A later
  * re-consented identification generates a fresh `install_id` and attests a
- * fresh key so the server mints an unlinked `visitorId`; set consent to
+ * fresh key. On iOS the server then mints an unlinked `visitorId`. On Android,
+ * also have your backend call the management API's "Erase a visitor": until
+ * then, on a phone that passes hardware attestation, the `ANDROID_ID` digest
+ * can still lead the next report back to the old `visitorId`. Set consent to
  * `'denied'` first to stop identifying altogether. Rejects with a
  * `FingerlyError` when the delete fails or the native SDK predates this call.
  */

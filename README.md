@@ -21,7 +21,7 @@
 
 ## What is this
 
-`@fingerly/lynx` (`0.4.3`, `v: 3`) is the Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and Android SDKs; all collection, transport and attestation stay native. You call `identify()` from Lynx background-thread scripting and get back a request ID and a visitor ID to send to your own backend, which decides what to do. [Fingerly](https://fingerly.io) is a device intelligence API that helps you protect signups, logins and payments from fraud and abuse.
+`@fingerly/lynx` (`0.5.0`, `v: 3`) is the Fingerly SDK for Lynx. It is a thin Native Module over the Fingerly iOS and Android SDKs; all collection, transport and attestation stay native. You call `identify()` from Lynx background-thread scripting and get back a request ID and a visitor ID to send to your own backend, which decides what to do. [Fingerly](https://fingerly.io) is a device intelligence API that helps you protect signups, logins and payments from fraud and abuse.
 
 Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron and per-`LynxView` registration.
 
@@ -31,7 +31,7 @@ Supported: Lynx 4.1 on iOS and Android. Not supported: HarmonyOS, Web, Lynxtron 
 2. **Install the package.**
 
    ```sh
-   pnpm add @fingerly/lynx@^0.4.3
+   pnpm add @fingerly/lynx@^0.5.0
    ```
 
    The host app must enable [Lynx Native Library Autolink](https://lynxjs.org/guide/autolink). See [Platform setup](#platform-setup) for the Android and iOS steps.
@@ -71,7 +71,7 @@ The package's `lynx.lib.json` registers the `Fingerly` Native Module. The host a
 | --- | --- |
 | Apply `org.lynxsdk.library-settings` in `settings.gradle` and `org.lynxsdk.library-build` in the app module, then sync and rebuild. | Install `cocoapods-lynx-library`, add `plugin 'cocoapods-lynx-library'` and `use_lynx_library!` to the Podfile, run `pod install`, then rebuild. |
 
-The Android module depends on `io.fingerly:fingerly:0.4.0` from Fingerly's Maven repository (`mavenLocal()` is also configured, for local artifact staging). Android hosts add Fingerly's repository to the repositories in `settings.gradle`:
+The Android module depends on `io.fingerly:fingerly:0.5.0` from Fingerly's Maven repository (`mavenLocal()` is also configured, for local artifact staging). Android hosts add Fingerly's repository to the repositories in `settings.gradle`:
 
 ```groovy
 maven { url 'https://maven.fingerly.io' }
@@ -189,7 +189,7 @@ It deletes the local install record (`install_id`) and the local hardware attest
 - On iOS, the `Application Support/io.fingerly.sdk/` container files, kept with `isExcludedFromBackup = true`, and the App Attest key state.
 - On Android, atomically, the install record and the persistent `AndroidKeyStore` v3 signing key `io.fingerly.sdk.attest.v3`.
 
-It needs no `load` and no consent, sends nothing, and resolves once no local record or key state remains, including when there was none. It rejects with a `FingerlyError` when the delete fails. A later re-consented identification generates a fresh `install_id` and attests a fresh key, so the server mints an unlinked `visitorId`; to stop identifying altogether, set consent to `'denied'` first.
+It needs no `load` and no consent, sends nothing, and resolves once no local record or key state remains, including when there was none. It rejects with a `FingerlyError` when the delete fails. A later re-consented identification generates a fresh `install_id` and attests a fresh key. On iOS the server then mints an unlinked `visitorId`. On Android, have your backend also call the management API's "Erase a visitor" (`DELETE /api/v1/management/organizations/{organization_id}/visitors/{visitor_id}`): until then, on a phone that passes hardware attestation, the `ANDROID_ID` digest can still lead the next report back to the old `visitorId`. To stop identifying altogether, set consent to `'denied'` first.
 
 ## Why there is no JavaScript fallback
 
@@ -197,7 +197,7 @@ JavaScript cannot inspect the filesystem, loaded Mach-O or ELF images, debugger 
 
 ## Native SDK dependencies
 
-The iOS dependency is at `0.4.1` and the Android dependency at `0.4.0`.
+The iOS dependency is at `0.4.1` and the Android dependency at `0.5.0`.
 
 <details>
 <summary><b>iOS</b></summary>
@@ -211,25 +211,27 @@ The Play Integrity project number passed to `load` is ignored on iOS.
 <details>
 <summary><b>Android</b></summary>
 
-The module resolves `io.fingerly:fingerly:0.4.0` from `https://maven.fingerly.io`, added to the host's repositories as shown in [Platform setup](#platform-setup).
+The module resolves `io.fingerly:fingerly:0.5.0` from `https://maven.fingerly.io`, added to the host's repositories as shown in [Platform setup](#platform-setup).
 
-**Installed-app checks are opt-in (`io.fingerly:fingerly-app-checks:0.4.0`).** Core `io.fingerly:fingerly:0.4.0` declares zero `<queries>` entries in its manifest, because Google Play treats installed-app visibility as personal and sensitive data. If your app can justify package visibility for the 17 root managers, hooking frameworks and dual-space cloners in its Play review, add `io.fingerly:fingerly-app-checks:0.4.0` to your app's Android module and declare "App activity: Installed apps" in the Data safety form. The module finds the artifact and registers its provider on every `load`, so there is no native code to write:
+**Reinstalls on Android.** The Android SDK reads `ANDROID_ID` and sends it only as a SHA-256 digest keyed by your app's signing certificate (`identity.ssaid_digest`), never the value itself; it needs no permission and shows no prompt. The server uses it only for a report that hardware attestation verified on a device with a locked bootloader and a verified boot, so on such a phone a reinstall keeps its `visitorId` until a factory reset or a change of your app's signing key. Any other report is identified by its install ID alone, as on iOS, where a reinstall always starts with a new install ID. Answer "Device or other IDs" in your app's Play Data safety form accordingly.
+
+**Installed-app checks are opt-in (`io.fingerly:fingerly-app-checks:0.5.0`).** Core `io.fingerly:fingerly:0.5.0` declares zero `<queries>` entries in its manifest, because Google Play treats installed-app visibility as personal and sensitive data. If your app can justify package visibility for the 17 root managers, hooking frameworks and dual-space cloners in its Play review, add `io.fingerly:fingerly-app-checks:0.5.0` to your app's Android module and declare "App activity: Installed apps" in the Data safety form. The module finds the artifact and registers its provider on every `load`, so there is no native code to write:
 
 ```kotlin
 // the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-app-checks:0.4.0")
+    implementation("io.fingerly:fingerly-app-checks:0.5.0")
 }
 ```
 
 Without it, the report carries no installed-app fields and nothing about other apps leaves the device; whether the app itself runs inside a cloner is still reported.
 
-**Play Integrity (optional, `io.fingerly:fingerly-play-integrity:0.4.0`).** To add Google Play Integrity Standard tokens bound to the `v: 3` `statementDigest`, add the artifact to your app's Android module and pass your Google Cloud project number, the one linked to the app in Play Console, to `load`. The module finds the artifact and registers its provider with that project number:
+**Play Integrity (optional, `io.fingerly:fingerly-play-integrity:0.5.0`).** To add Google Play Integrity Standard tokens bound to the `v: 3` `statementDigest`, add the artifact to your app's Android module and pass your Google Cloud project number, the one linked to the app in Play Console, to `load`. The module finds the artifact and registers its provider with that project number:
 
 ```kotlin
 // the app module's build.gradle.kts
 dependencies {
-    implementation("io.fingerly:fingerly-play-integrity:0.4.0")
+    implementation("io.fingerly:fingerly-play-integrity:0.5.0")
 }
 ```
 
